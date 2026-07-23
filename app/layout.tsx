@@ -5,7 +5,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import StickyCallBar from "@/components/layout/StickyCallBar";
 import FloatingQuoteButton from "@/components/layout/FloatingQuoteButton";
-import { BUSINESS } from "@/lib/constants";
+import { BUSINESS, SITE_URL } from "@/lib/constants";
 
 const displayFont = Space_Grotesk({
   subsets: ["latin"],
@@ -20,7 +20,7 @@ const bodyFont = Inter({
   display: "swap",
 });
 
-const siteUrl = "https://boisebasinjunkremoval.com";
+const siteUrl = SITE_URL;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

@@ -58,9 +58,13 @@ const initialState: FormState = {
   notes: "",
 };
 
-// TODO: Replace with your real Formspree endpoint (or any form backend).
-// Sign up free at https://formspree.io, create a form, and paste the ID below.
-const FORM_ENDPOINT = "https://formspree.io/f/YOUR_FORM_ID";
+// Set NEXT_PUBLIC_FORM_ENDPOINT in your environment to enable real submissions.
+// Example: NEXT_PUBLIC_FORM_ENDPOINT=https://formspree.io/f/your-form-id
+const FORM_ENDPOINT = process.env.NEXT_PUBLIC_FORM_ENDPOINT?.trim() || "https://formspree.io/f/your-form-id";
+const USE_DEMO_SUBMISSION =
+  !FORM_ENDPOINT ||
+  FORM_ENDPOINT.includes("your-form-id") ||
+  FORM_ENDPOINT.includes("YOUR_FORM_ID");
 
 export default function QuoteForm() {
   const [step, setStep] = useState(0);
@@ -138,7 +142,7 @@ export default function QuoteForm() {
       data.append("notes", form.notes);
       form.photos.forEach((file, i) => data.append(`photo_${i + 1}`, file));
 
-      if (FORM_ENDPOINT.includes("YOUR_FORM_ID")) {
+      if (USE_DEMO_SUBMISSION) {
         // No backend connected yet — simulate success so the flow is demo-able.
         await new Promise((r) => setTimeout(r, 700));
       } else {

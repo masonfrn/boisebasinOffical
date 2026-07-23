@@ -15,24 +15,30 @@ export default function Reviews() {
           className="mx-auto"
         />
         <p className="mx-auto mt-2 max-w-md text-center text-xs text-ink-muted">
-          Placeholder testimonials shown for design purposes — replace with your real reviews.
+          Real customer stories will appear here as you collect permission to share them.
         </p>
 
         <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {TESTIMONIALS.map((t) => (
-            <div key={t.name} className="rounded-2xl bg-white p-6 shadow-card">
-              <div className="flex gap-0.5 text-basin-500">
-                {Array.from({ length: t.rating }).map((_, i) => (
-                  <Star key={i} size={16} className="fill-basin-500" />
-                ))}
+          {TESTIMONIALS.length > 0 ? (
+            TESTIMONIALS.map((t) => (
+              <div key={t.name} className="rounded-2xl bg-white p-6 shadow-card">
+                <div className="flex gap-0.5 text-basin-500">
+                  {Array.from({ length: t.rating }).map((_, i) => (
+                    <Star key={i} size={16} className="fill-basin-500" />
+                  ))}
+                </div>
+                <p className="mt-4 text-sm leading-relaxed text-ink-soft">&ldquo;{t.quote}&rdquo;</p>
+                <div className="mt-5">
+                  <p className="font-display text-sm font-bold text-navy">{t.name}</p>
+                  <p className="text-xs text-ink-muted">{t.location}</p>
+                </div>
               </div>
-              <p className="mt-4 text-sm leading-relaxed text-ink-soft">&ldquo;{t.quote}&rdquo;</p>
-              <div className="mt-5">
-                <p className="font-display text-sm font-bold text-navy">{t.name}</p>
-                <p className="text-xs text-ink-muted">{t.location}</p>
-              </div>
+            ))
+          ) : (
+            <div className="rounded-2xl border border-dashed border-navy/15 bg-white p-8 text-center text-sm text-ink-muted sm:col-span-2 lg:col-span-3">
+              Testimonials will appear here once you have real customer reviews to share.
             </div>
-          ))}
+          )}
         </div>
 
         <div className="mt-10 flex justify-center">

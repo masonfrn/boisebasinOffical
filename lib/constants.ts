@@ -1,3 +1,5 @@
+export const SITE_URL = "https://boisebasinjunkremoval.com";
+
 export const BUSINESS = {
   name: "Boise Basin Junk Removal",
   shortName: "Boise Basin",
@@ -6,7 +8,7 @@ export const BUSINESS = {
   smsHref: "sms:+12083913730",
   email: "boisebasinjunkremoval@gmail.com",
   emailHref: "mailto:boisebasinjunkremoval@gmail.com",
-  facebookUrl: "https://facebook.com/",
+  facebookUrl: "https://www.facebook.com/boisebasinjunkremoval",
   googleReviewUrl: "https://g.page/r/CV8ZAV7JDmDwEAI/review",
   serviceRegion: "Treasure Valley, Idaho",
   addressRegion: "ID",
@@ -92,26 +94,9 @@ export const FAQS = [
   },
 ];
 
-export const TESTIMONIALS = [
-  {
-    name: "Rachel M.",
-    location: "Meridian, ID",
-    quote:
-      "Booked in the morning, junk gone by the afternoon. Crew was fast, careful with our floors, and the price matched the quote exactly.",
-    rating: 5,
-  },
-  {
-    name: "Derek T.",
-    location: "Boise, ID",
-    quote:
-      "Used them for a garage cleanout that had been piling up for years. No judgment, just hard work. Would call again in a heartbeat.",
-    rating: 5,
-  },
-  {
-    name: "Priya S.",
-    location: "Nampa, ID",
-    quote:
-      "Handled an estate cleanout for my mom's place with so much patience and respect. That meant more than they probably realize.",
-    rating: 5,
-  },
-];
+export const TESTIMONIALS: Array<{
+  name: string;
+  location: string;
+  quote: string;
+  rating: number;
+}> = [];
