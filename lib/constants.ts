@@ -8,7 +8,7 @@ export const BUSINESS = {
   smsHref: "sms:+12083913730",
   email: "boisebasinjunkremoval@gmail.com",
   emailHref: "mailto:boisebasinjunkremoval@gmail.com",
-  facebookUrl: "https://www.facebook.com/boisebasinjunkremoval",
+  facebookUrl: "https://www.facebook.com/profile.php?id=61591435949353",
   googleReviewUrl: "https://g.page/r/CV8ZAV7JDmDwEAI/review",
   serviceRegion: "Treasure Valley, Idaho",
   addressRegion: "ID",
