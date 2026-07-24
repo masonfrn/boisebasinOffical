@@ -60,7 +60,7 @@ const initialState: FormState = {
 
 // Set NEXT_PUBLIC_FORM_ENDPOINT in your environment to enable real submissions.
 // Example: NEXT_PUBLIC_FORM_ENDPOINT=https://formspree.io/f/your-form-id
-const FORM_ENDPOINT = process.env.NEXT_PUBLIC_FORM_ENDPOINT?.trim() || "https://formspree.io/f/your-form-id";
+const FORM_ENDPOINT = "https://formspree.io/f/xojglyjv";
 const USE_DEMO_SUBMISSION =
   !FORM_ENDPOINT ||
   FORM_ENDPOINT.includes("your-form-id") ||
