@@ -13,21 +13,18 @@ export const BUSINESS = {
   serviceRegion: "Treasure Valley, Idaho",
   addressRegion: "ID",
   addressLocality: "Boise",
-  // Approximate service-area center used for LocalBusiness geo in schema.
-  // This is a service-area business with no public storefront — confirm this
-  // is how you want to represent location before treating it as exact.
+  // Boise general city center — used as the service-area center for
+  // LocalBusiness geo in schema (no public storefront address).
   geo: { latitude: 43.615, longitude: -116.2023 },
 };
 
-// Placeholder hours — confirm actual operating hours and update before relying
-// on this for LocalBusiness openingHoursSpecification schema.
 export const BUSINESS_HOURS = [
-  { day: "Monday", opens: "07:00", closes: "19:00" },
-  { day: "Tuesday", opens: "07:00", closes: "19:00" },
-  { day: "Wednesday", opens: "07:00", closes: "19:00" },
-  { day: "Thursday", opens: "07:00", closes: "19:00" },
-  { day: "Friday", opens: "07:00", closes: "19:00" },
-  { day: "Saturday", opens: "08:00", closes: "17:00" },
+  { day: "Monday", opens: "08:00", closes: "21:00" },
+  { day: "Tuesday", opens: "08:00", closes: "21:00" },
+  { day: "Wednesday", opens: "08:00", closes: "21:00" },
+  { day: "Thursday", opens: "08:00", closes: "21:00" },
+  { day: "Friday", opens: "08:00", closes: "21:00" },
+  { day: "Saturday", opens: "08:00", closes: "21:00" },
 ];
 
 export const SERVICE_AREAS = [
