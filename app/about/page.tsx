@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   title: "About Us",
   description:
     "Boise Basin Junk Removal is a locally owned, licensed, and insured junk removal company serving the Treasure Valley with upfront pricing and a respectful crew.",
+  alternates: {
+    canonical: "/about",
+  },
 };
 
 const VALUES = [

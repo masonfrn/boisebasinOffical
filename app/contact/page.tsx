@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   title: "Contact Us",
   description:
     "Call, text, or email Boise Basin Junk Removal to schedule fast, affordable junk removal anywhere in the Treasure Valley.",
+  alternates: {
+    canonical: "/contact",
+  },
 };
 
 const METHODS = [
@@ -40,6 +43,7 @@ export default function ContactPage() {
     <section className="bg-white py-16 sm:py-24">
       <Container className="max-w-3xl">
         <SectionHeading
+          as="h1"
           eyebrow="Get In Touch"
           title="Contact Boise Basin Junk Removal"
           subtitle="Reach out however is easiest — or skip straight to a free instant quote."

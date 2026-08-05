@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   title: "Get an Instant Quote",
   description:
     "Get a fast, free, no-obligation junk removal quote anywhere in the Treasure Valley. Tell us what you need removed and we'll respond quickly.",
+  alternates: {
+    canonical: "/quote",
+  },
 };
 
 export default function QuotePage() {
@@ -16,6 +19,7 @@ export default function QuotePage() {
     <section className="bg-paper py-14 sm:py-20">
       <Container>
         <SectionHeading
+          as="h1"
           eyebrow="Free & Fast"
           title="Get Your Instant Quote"
           subtitle="Answer a few quick questions and we'll follow up with an upfront price — usually within minutes during business hours."

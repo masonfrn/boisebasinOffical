@@ -1,15 +1,19 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { MapPin } from "lucide-react";
 import Container from "@/components/ui/Container";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Button from "@/components/ui/Button";
 import ServiceAreaMap from "@/components/home/ServiceAreaMap";
-import { SERVICE_AREAS } from "@/lib/constants";
+import { SERVICE_AREAS, CITY_PAGES } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "Service Areas",
+  title: "Junk Removal Service Areas: Boise, Meridian, Nampa & More",
   description:
-    "Boise Basin Junk Removal proudly serves Boise, Meridian, Eagle, Nampa, Caldwell, Kuna, Star, and Middleton, Idaho.",
+    "Junk removal in Boise, Meridian, Eagle, Nampa, Caldwell, Kuna, Star & Middleton, ID. Same-day service, upfront pricing. Free instant quotes.",
+  alternates: {
+    canonical: "/service-areas",
+  },
 };
 
 const AREA_COPY: Record<string, string> = {
@@ -47,15 +51,22 @@ export default function ServiceAreasPage() {
         <Container>
           <SectionHeading eyebrow="City by City" title="Local Junk Removal, Wherever You Are" align="center" className="mx-auto" />
           <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {SERVICE_AREAS.map((area) => (
-              <div key={area} className="rounded-2xl bg-white p-6 shadow-card">
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-basin-50 text-basin-500">
-                  <MapPin size={18} />
-                </span>
-                <h3 className="mt-4 font-display text-base font-bold text-navy">{area}, ID</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">{AREA_COPY[area]}</p>
-              </div>
-            ))}
+            {SERVICE_AREAS.map((area) => {
+              const cityPage = CITY_PAGES.find((c) => c.name === area);
+              return (
+                <Link
+                  key={area}
+                  href={cityPage ? `/junk-removal/${cityPage.slug}` : "/service-areas"}
+                  className="block rounded-2xl bg-white p-6 shadow-card transition-shadow hover:shadow-cardHover"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-basin-50 text-basin-500">
+                    <MapPin size={18} />
+                  </span>
+                  <h3 className="mt-4 font-display text-base font-bold text-navy">{area}, ID</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">{AREA_COPY[area]}</p>
+                </Link>
+              );
+            })}
           </div>
           <div className="mt-10 flex justify-center">
             <Button href="/quote" size="lg">
