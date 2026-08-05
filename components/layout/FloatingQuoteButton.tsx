@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { ClipboardList } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 export default function FloatingQuoteButton() {
   const [visible, setVisible] = useState(false);
@@ -20,24 +20,21 @@ export default function FloatingQuoteButton() {
   if (pathname === "/quote") return null;
 
   return (
-    <AnimatePresence>
-      {visible && (
-        <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.9 }}
-          transition={{ duration: 0.25, ease: "easeOut" }}
-          className="fixed bottom-24 right-5 z-40 lg:bottom-6 lg:right-6"
-        >
-          <Link
-            href="/quote"
-            className="flex items-center gap-2 rounded-full bg-basin-500 px-5 py-3.5 font-display text-sm font-bold text-white shadow-cta transition-transform hover:scale-105 active:scale-95"
-          >
-            <ClipboardList size={18} />
-            Get Quote
-          </Link>
-        </motion.div>
+    <div
+      className={cn(
+        "fixed bottom-24 right-5 z-40 transition-all duration-200 ease-out motion-reduce:transition-none lg:bottom-6 lg:right-6",
+        visible
+          ? "translate-y-0 scale-100 opacity-100"
+          : "pointer-events-none translate-y-5 scale-90 opacity-0"
       )}
-    </AnimatePresence>
+    >
+      <Link
+        href="/quote"
+        className="flex items-center gap-2 rounded-full bg-basin-500 px-5 py-3.5 font-display text-sm font-bold text-white shadow-cta transition-transform hover:scale-105 active:scale-95"
+      >
+        <ClipboardList size={18} />
+        Get Quote
+      </Link>
+    </div>
   );
 }
