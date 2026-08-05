@@ -6,7 +6,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import StickyCallBar from "@/components/layout/StickyCallBar";
 import FloatingQuoteButton from "@/components/layout/FloatingQuoteButton";
-import { BUSINESS, SITE_URL } from "@/lib/constants";
+import { BUSINESS, BUSINESS_HOURS, SITE_URL } from "@/lib/constants";
 
 const displayFont = Space_Grotesk({
   subsets: ["latin"],
@@ -26,11 +26,11 @@ const siteUrl = SITE_URL;
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Boise Basin Junk Removal | Fast & Affordable Junk Removal in the Treasure Valley",
+    default: "Junk Removal in Boise, ID | Boise Basin",
     template: "%s | Boise Basin Junk Removal",
   },
   description:
-    "Boise Basin Junk Removal provides fast, affordable junk removal throughout Boise, Meridian, Nampa, Eagle, Caldwell, Kuna, Star, and the surrounding Treasure Valley. Get your free instant quote today.",
+    "Same-day junk removal across the Treasure Valley — Boise, Meridian, Nampa, Eagle & more. Upfront pricing. Get a free instant quote today.",
   keywords: [
     "Boise Junk Removal",
     "Junk Removal Boise",
@@ -40,8 +40,11 @@ export const metadata: Metadata = {
     "Garage Cleanout Boise",
     "Estate Cleanout Boise",
   ],
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
-    title: "Boise Basin Junk Removal | Fast & Affordable Junk Removal in the Treasure Valley",
+    title: "Junk Removal in Boise, ID | Boise Basin",
     description:
       "Same-day and next-day junk removal across the Treasure Valley. Upfront pricing, licensed and insured. Get an instant quote in minutes.",
     url: siteUrl,
@@ -59,6 +62,9 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  verification: {
+    google: process.env.NEXT_PUBLIC_GSC_VERIFICATION || undefined,
+  },
 };
 
 export default function RootLayout({
@@ -70,9 +76,11 @@ export default function RootLayout({
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
     name: BUSINESS.name,
+    image: `${siteUrl}/opengraph-image`,
     telephone: BUSINESS.phone,
     email: BUSINESS.email,
     url: siteUrl,
+    sameAs: [BUSINESS.facebookUrl, BUSINESS.googleReviewUrl],
     areaServed: [
       "Boise, ID",
       "Meridian, ID",
@@ -89,8 +97,21 @@ export default function RootLayout({
       addressRegion: BUSINESS.addressRegion,
       addressCountry: "US",
     },
+    geo: {
+      "@type": "GeoCoordinates",
+      latitude: BUSINESS.geo.latitude,
+      longitude: BUSINESS.geo.longitude,
+    },
+    openingHoursSpecification: BUSINESS_HOURS.map((h) => ({
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: h.day,
+      opens: h.opens,
+      closes: h.closes,
+    })),
     priceRange: "$$",
   };
+
+  const gaId = process.env.NEXT_PUBLIC_GA_ID;
 
   return (
     <html lang="en" className={`${displayFont.variable} ${bodyFont.variable}`}>
@@ -99,6 +120,26 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        {gaId && (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
+              strategy="afterInteractive"
+            />
+            <Script
+              id="ga4"
+              strategy="afterInteractive"
+              dangerouslySetInnerHTML={{
+                __html: `
+                  window.dataLayer = window.dataLayer || [];
+                  function gtag(){dataLayer.push(arguments);}
+                  gtag('js', new Date());
+                  gtag('config', '${gaId}');
+                `,
+              }}
+            />
+          </>
+        )}
         <Script
           id="meta-pixel"
           strategy="afterInteractive"

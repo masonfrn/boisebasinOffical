@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   Sofa,
@@ -16,7 +17,7 @@ import {
 import Container from "@/components/ui/Container";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Button from "@/components/ui/Button";
-import { SERVICES } from "@/lib/constants";
+import { SERVICES, SERVICE_PAGES } from "@/lib/constants";
 
 const ICONS = [
   Sofa,
@@ -43,15 +44,9 @@ export default function ServicesGrid() {
         <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {SERVICES.map((service, i) => {
             const Icon = ICONS[i % ICONS.length];
-            return (
-              <motion.div
-                key={service.title}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-40px" }}
-                transition={{ duration: 0.4, delay: (i % 5) * 0.05 }}
-                className="group rounded-2xl border border-navy/5 bg-paper p-5 shadow-card transition-shadow hover:shadow-cardHover"
-              >
+            const servicePage = SERVICE_PAGES.find((s) => s.title === service.title);
+            const card = (
+              <>
                 <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-navy text-white transition-colors group-hover:bg-basin-500">
                   <Icon size={20} />
                 </span>
@@ -61,6 +56,22 @@ export default function ServicesGrid() {
                 <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">
                   {service.desc}
                 </p>
+              </>
+            );
+            return (
+              <motion.div
+                key={service.title}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ duration: 0.4, delay: (i % 5) * 0.05 }}
+                className="group rounded-2xl border border-navy/5 bg-paper p-5 shadow-card transition-shadow hover:shadow-cardHover"
+              >
+                {servicePage ? (
+                  <Link href={`/services/${servicePage.slug}`}>{card}</Link>
+                ) : (
+                  card
+                )}
               </motion.div>
             );
           })}
