@@ -1,0 +1,118 @@
+import { NextResponse } from "next/server";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+// Zapier Catch Hook that feeds the Go High Level account.
+// Override with ZAPIER_WEBHOOK_URL in the environment if the Zap ever changes.
+const WEBHOOK_URL =
+  process.env.ZAPIER_WEBHOOK_URL?.trim() ||
+  "https://hooks.zapier.com/hooks/catch/7361629/4tovgpv/";
+
+type QuotePayload = {
+  items?: string[];
+  loadSize?: string;
+  street?: string;
+  city?: string;
+  zip?: string;
+  preferredDate?: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+  notes?: string;
+  photoNames?: string[];
+  pageUrl?: string;
+};
+
+/** GHL wants first/last separately when it creates the contact. */
+function splitName(full: string) {
+  const parts = full.trim().split(/\s+/);
+  return {
+    firstName: parts[0] ?? "",
+    lastName: parts.slice(1).join(" "),
+  };
+}
+
+/** GHL matches contacts on E.164, so send a normalized copy alongside the raw. */
+function toE164(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  return digits ? `+${digits}` : "";
+}
+
+function str(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function list(value: unknown) {
+  return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
+}
+
+export async function POST(request: Request) {
+  let body: QuotePayload;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ ok: false, error: "Invalid request body" }, { status: 400 });
+  }
+
+  const name = str(body.name);
+  const phone = str(body.phone);
+  if (!name || !phone) {
+    return NextResponse.json(
+      { ok: false, error: "Name and phone are required" },
+      { status: 400 }
+    );
+  }
+
+  const { firstName, lastName } = splitName(name);
+  const street = str(body.street);
+  const city = str(body.city);
+  const zip = str(body.zip);
+  const items = list(body.items);
+  const photoNames = list(body.photoNames);
+
+  // Flat, snake_case keys so each one maps straight to a GHL field in Zapier.
+  const payload = {
+    full_name: name,
+    first_name: firstName,
+    last_name: lastName,
+    phone,
+    phone_e164: toE164(phone),
+    email: str(body.email),
+    address: street,
+    city,
+    state: "ID",
+    postal_code: zip,
+    full_address: [street, city, zip && `ID ${zip}`].filter(Boolean).join(", "),
+    items: items.join(", "),
+    load_size: str(body.loadSize),
+    preferred_date: str(body.preferredDate),
+    notes: str(body.notes),
+    photo_count: photoNames.length,
+    photo_names: photoNames.join(", "),
+    source: "Website — Instant Quote Form",
+    page_url: str(body.pageUrl),
+    submitted_at: new Date().toISOString(),
+  };
+
+  try {
+    const res = await fetch(WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    if (!res.ok) {
+      console.error(`Zapier webhook responded ${res.status}`, await res.text().catch(() => ""));
+      return NextResponse.json({ ok: false, error: "Lead delivery failed" }, { status: 502 });
+    }
+  } catch (error) {
+    console.error("Zapier webhook request failed", error);
+    return NextResponse.json({ ok: false, error: "Lead delivery failed" }, { status: 502 });
+  }
+
+  return NextResponse.json({ ok: true });
+}
