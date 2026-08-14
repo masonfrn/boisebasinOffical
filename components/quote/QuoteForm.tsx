@@ -23,9 +23,14 @@ import TruckLoadGauge from "./TruckLoadGauge";
 
 type Photo = {
   name: string;
-  /** Cloudinary URL once the upload lands; null while uploading or on failure. */
+  /** Cloudinary URL once the upload lands. */
   url: string | null;
-  failed?: boolean;
+  /**
+   * "local" means we never tried to upload because Cloudinary isn't configured —
+   * the form then behaves exactly as it did before photos were hosted, showing
+   * filenames. Without this the site would show "Upload failed" on every photo.
+   */
+  status: "uploading" | "ready" | "failed" | "local";
 };
 
 type Estimate = {
@@ -96,7 +101,7 @@ export default function QuoteForm() {
     () => LOAD_SIZES.find((l) => l.label === form.loadSize),
     [form.loadSize]
   );
-  const uploading = form.photos.some((photo) => photo.url === null && !photo.failed);
+  const uploading = form.photos.some((photo) => photo.status === "uploading");
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -115,31 +120,43 @@ export default function QuoteForm() {
     const files = Array.from(e.target.files ?? []).slice(0, 6);
     if (files.length === 0) return;
 
-    // Show the filenames right away, then fill in each URL as its upload lands.
-    setForm((prev) => ({
-      ...prev,
-      photos: files.map((file) => ({ name: file.name, url: null })),
-    }));
     setEstimateState("idle");
     setEstimate(null);
 
+    // No Cloudinary configured — keep the pre-hosting behaviour rather than
+    // showing the customer an upload error for something they can't fix.
+    if (!CLOUDINARY_CONFIGURED) {
+      setForm((prev) => ({
+        ...prev,
+        photos: files.map((file) => ({ name: file.name, url: null, status: "local" as const })),
+      }));
+      return;
+    }
+
+    // Show the filenames right away, then fill in each URL as its upload lands.
+    setForm((prev) => ({
+      ...prev,
+      photos: files.map((file) => ({
+        name: file.name,
+        url: null,
+        status: "uploading" as const,
+      })),
+    }));
+
     await Promise.all(
       files.map(async (file, index) => {
+        const settle = (photo: Photo) =>
+          setForm((prev) => {
+            const photos = [...prev.photos];
+            if (photos[index]?.name === file.name) photos[index] = photo;
+            return { ...prev, photos };
+          });
+
         try {
           const url = await uploadPhoto(file);
-          setForm((prev) => {
-            const photos = [...prev.photos];
-            if (photos[index]?.name === file.name) photos[index] = { name: file.name, url };
-            return { ...prev, photos };
-          });
+          settle({ name: file.name, url, status: "ready" });
         } catch {
-          setForm((prev) => {
-            const photos = [...prev.photos];
-            if (photos[index]?.name === file.name) {
-              photos[index] = { name: file.name, url: null, failed: true };
-            }
-            return { ...prev, photos };
-          });
+          settle({ name: file.name, url: null, status: "failed" });
         }
       })
     );
@@ -388,19 +405,17 @@ export default function QuoteForm() {
                         key={`${photo.name}-${i}`}
                         className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-navy-50 text-[11px] font-medium text-ink-muted"
                       >
-                        {photo.url ? (
+                        {photo.status === "ready" && photo.url ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={photo.url}
                             alt={photo.name}
                             className="h-full w-full object-cover"
                           />
-                        ) : photo.failed ? (
-                          <span className="px-2 text-center leading-tight text-basin-600">
-                            Upload failed
-                          </span>
-                        ) : (
+                        ) : photo.status === "uploading" ? (
                           <Loader2 size={18} className="animate-spin text-haul-500" />
+                        ) : (
+                          <span className="px-2 text-center leading-tight">{photo.name}</span>
                         )}
                         <button
                           type="button"
