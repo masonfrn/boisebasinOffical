@@ -58,13 +58,9 @@ const initialState: FormState = {
   notes: "",
 };
 
-// Set NEXT_PUBLIC_FORM_ENDPOINT in your environment to enable real submissions.
-// Example: NEXT_PUBLIC_FORM_ENDPOINT=https://formspree.io/f/your-form-id
-const FORM_ENDPOINT = process.env.NEXT_PUBLIC_FORM_ENDPOINT?.trim() || "https://formspree.io/f/your-form-id";
-const USE_DEMO_SUBMISSION =
-  !FORM_ENDPOINT ||
-  FORM_ENDPOINT.includes("your-form-id") ||
-  FORM_ENDPOINT.includes("YOUR_FORM_ID");
+// Submissions go to our own API route, which forwards the lead to the Zapier
+// Catch Hook wired into Go High Level. See app/api/quote/route.ts.
+const FORM_ENDPOINT = "/api/quote";
 
 export default function QuoteForm() {
   const [step, setStep] = useState(0);
@@ -129,30 +125,28 @@ export default function QuoteForm() {
     setStatus("submitting");
 
     try {
-      const data = new FormData();
-      data.append("items", form.items.join(", "));
-      data.append("loadSize", form.loadSize);
-      data.append("street", form.street);
-      data.append("city", form.city);
-      data.append("zip", form.zip);
-      data.append("preferredDate", form.dateOption === "Specific Date" ? form.specificDate : form.dateOption);
-      data.append("name", form.name);
-      data.append("phone", form.phone);
-      data.append("email", form.email);
-      data.append("notes", form.notes);
-      form.photos.forEach((file, i) => data.append(`photo_${i + 1}`, file));
-
-      if (USE_DEMO_SUBMISSION) {
-        // No backend connected yet — simulate success so the flow is demo-able.
-        await new Promise((r) => setTimeout(r, 700));
-      } else {
-        const res = await fetch(FORM_ENDPOINT, {
-          method: "POST",
-          body: data,
-          headers: { Accept: "application/json" },
-        });
-        if (!res.ok) throw new Error("Submission failed");
-      }
+      const res = await fetch(FORM_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: form.items,
+          loadSize: form.loadSize,
+          street: form.street,
+          city: form.city,
+          zip: form.zip,
+          preferredDate:
+            form.dateOption === "Specific Date" ? form.specificDate : form.dateOption,
+          name: form.name,
+          phone: form.phone,
+          email: form.email,
+          notes: form.notes,
+          // Files themselves can't ride along to the webhook — send the names so
+          // the crew knows photos exist and can ask for them on the callback.
+          photoNames: form.photos.map((file) => file.name),
+          pageUrl: typeof window !== "undefined" ? window.location.href : "",
+        }),
+      });
+      if (!res.ok) throw new Error("Submission failed");
       setStatus("success");
     } catch {
       setStatus("error");

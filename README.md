@@ -21,12 +21,13 @@ Then open http://localhost:3000.
 
 ## Things to edit before launch
 
-1. **Connect the quote form to a real inbox** — open
-   `components/quote/QuoteForm.tsx` and find the `FORM_ENDPOINT` constant
-   near the top. Sign up free at [formspree.io](https://formspree.io),
-   create a form, and paste your endpoint URL in. Until you do this, the
-   form will simulate a successful submission without actually sending
-   anything.
+1. **Where quote leads go** — the form posts to `app/api/quote/route.ts`,
+   which forwards each lead as JSON to a Zapier Catch Hook that creates the
+   contact in Go High Level. The hook URL is hardcoded in that route as a
+   fallback and can be overridden with a `ZAPIER_WEBHOOK_URL` environment
+   variable (set it in Vercel → Settings → Environment Variables to point at
+   a different Zap). Photo *files* are not forwarded — only their filenames,
+   so the crew knows to ask for them.
 2. **Google Business Profile URL** — `lib/constants.ts` → `BUSINESS.googleReviewUrl`
    is already set from your QR code. Swap it out any time your review link
    changes.
