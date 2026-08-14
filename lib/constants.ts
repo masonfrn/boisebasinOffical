@@ -1,4 +1,9 @@
-export const SITE_URL = "https://boisebasinjunkremoval.com";
+// The live domain. Everything canonical derives from this — canonical tags,
+// og:url, LocalBusiness schema, sitemap.xml, robots.txt — so it has to match
+// where the site actually answers. The bare domain 308s to www, making www the
+// canonical form. (This read boisebasinjunkremoval.com until 2026-08-14, a
+// domain that never resolved, which pointed every crawler at nothing.)
+export const SITE_URL = "https://www.boisebasinjunk.com";
 
 export const BUSINESS = {
   name: "Boise Basin Junk Removal",

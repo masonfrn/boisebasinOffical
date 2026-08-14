@@ -47,9 +47,11 @@ Then open http://localhost:3000.
    is an original SVG illustration used as a placeholder for real crew /
    truck photography. Swap it for an `<Image>` of your actual crew when you
    have photos (drop files in `/public` and reference them).
-7. **Site URL for SEO** — `app/layout.tsx`, `app/sitemap.ts`, and
-   `app/robots.ts` all reference `https://boisebasinjunkremoval.com`.
-   Update this once you know your real domain.
+7. **Site URL for SEO** — set once in `lib/constants.ts` → `SITE_URL`, and
+   used by canonical tags, og:url, schema, `sitemap.xml`, and `robots.txt`.
+   It must match the domain the site actually answers on
+   (`https://www.boisebasinjunk.com`); if the domain ever changes, change it
+   here and nowhere else.
 8. **Testimonials** — `lib/constants.ts` → `TESTIMONIALS` are placeholders.
    Replace with real customer quotes (with permission) as you collect them.
 
