@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, MapPin, ArrowRight } from "lucide-react";
 import Container from "@/components/ui/Container";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Button from "@/components/ui/Button";
-import { SERVICE_PAGES, BUSINESS } from "@/lib/constants";
+import { SERVICE_PAGES, CITY_PAGES, BUSINESS } from "@/lib/constants";
+import { localPagePath } from "@/lib/localPages";
 
 export function generateStaticParams() {
   return SERVICE_PAGES.map((service) => ({ service: service.slug }));
@@ -116,7 +118,37 @@ export default function ServicePage({ params }: { params: { service: string } })
         </Container>
       </section>
 
-      <section className="bg-navy-50/40 py-16 text-center sm:py-20">
+      <section className="bg-navy-50/40 py-16 sm:py-24">
+        <Container>
+          <SectionHeading
+            eyebrow="By City"
+            title={`${service.title} Near You`}
+            align="center"
+            className="mx-auto"
+          />
+          <p className="mx-auto mt-4 max-w-xl text-center text-sm leading-relaxed text-ink-muted">
+            Every city we serve has its own quirks — access, terrain, and where the
+            load ends up. Pick yours for the local details.
+          </p>
+          <div className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {CITY_PAGES.map((city) => (
+              <Link
+                key={city.slug}
+                href={localPagePath(service.slug, city.slug)}
+                className="flex items-center justify-between gap-2 rounded-2xl bg-white p-4 shadow-card transition-shadow hover:shadow-cardHover"
+              >
+                <span className="flex items-center gap-2 font-display text-sm font-bold text-navy">
+                  <MapPin size={15} className="shrink-0 text-basin-500" />
+                  {city.name}, ID
+                </span>
+                <ArrowRight size={15} className="shrink-0 text-basin-500" />
+              </Link>
+            ))}
+          </div>
+        </Container>
+      </section>
+
+      <section className="bg-white py-16 text-center sm:py-20">
         <Container className="max-w-xl">
           <h2 className="font-display text-2xl font-bold text-navy sm:text-3xl">
             Ready for {service.title.toLowerCase()}?

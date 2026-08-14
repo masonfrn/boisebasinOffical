@@ -44,7 +44,10 @@ export default function ServicesGrid() {
         <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {SERVICES.map((service, i) => {
             const Icon = ICONS[i % ICONS.length];
-            const servicePage = SERVICE_PAGES.find((s) => s.title === service.title);
+            // Matched on slug, not title: the card labels are deliberately
+            // shorter than the page titles ("Yard Waste" vs "Yard Waste
+            // Removal"), so a title comparison silently drops the link.
+            const servicePage = SERVICE_PAGES.find((s) => s.slug === service.slug);
             const card = (
               <>
                 <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-navy text-white transition-colors group-hover:bg-basin-500">

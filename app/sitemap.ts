@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL, CITY_PAGES, SERVICE_PAGES } from "@/lib/constants";
+import { LOCAL_PAGE_PARAMS, localPagePath } from "@/lib/localPages";
 import { RESOURCES } from "@/lib/resources";
 
 const siteUrl = SITE_URL;
@@ -37,6 +38,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.75,
   }));
 
+  // The 80 service-by-city pages. Derived from LOCAL_PAGE_PARAMS so the sitemap
+  // and the generated routes can't fall out of sync when a city or service is
+  // added.
+  const localRoutes: MetadataRoute.Sitemap = LOCAL_PAGE_PARAMS.map((param) => ({
+    url: `${siteUrl}${localPagePath(param.service, param.city)}`,
+    lastModified: CORE_LAST_MODIFIED,
+    changeFrequency: "monthly",
+    priority: 0.7,
+  }));
+
   const resourceRoutes: MetadataRoute.Sitemap = [
     {
       url: `${siteUrl}/resources`,
@@ -52,5 +63,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     })),
   ];
 
-  return [...coreRoutes, ...cityRoutes, ...serviceRoutes, ...resourceRoutes];
+  return [
+    ...coreRoutes,
+    ...cityRoutes,
+    ...serviceRoutes,
+    ...localRoutes,
+    ...resourceRoutes,
+  ];
 }

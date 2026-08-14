@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MapPin, CheckCircle2 } from "lucide-react";
 import Container from "@/components/ui/Container";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Button from "@/components/ui/Button";
 import { CITY_PAGES, SERVICES, FAQS } from "@/lib/constants";
+import { localPagePath } from "@/lib/localPages";
 
 export function generateStaticParams() {
   return CITY_PAGES.map((city) => ({ city: city.slug }));
@@ -94,16 +96,19 @@ export default function CityPage({ params }: { params: { city: string } }) {
           <SectionHeading eyebrow="What We Haul" title={`${city.name} Junk Removal Services`} />
           <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {SERVICES.map((service) => (
-              <div
+              <Link
                 key={service.title}
-                className="flex items-start gap-3 rounded-2xl border border-navy/5 bg-paper p-5 shadow-card"
+                href={localPagePath(service.slug, city.slug)}
+                className="flex items-start gap-3 rounded-2xl border border-navy/5 bg-paper p-5 shadow-card transition-shadow hover:shadow-cardHover"
               >
                 <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-haul-500" />
                 <div>
-                  <h3 className="font-display text-sm font-bold text-navy">{service.title}</h3>
+                  <h3 className="font-display text-sm font-bold text-navy">
+                    {service.title} in {city.name}
+                  </h3>
                   <p className="mt-1 text-sm leading-relaxed text-ink-muted">{service.desc}</p>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </Container>
