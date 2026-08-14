@@ -61,7 +61,13 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { photoUrls?: string[]; items?: string[]; loadSize?: string; notes?: string };
+  let body: {
+    photoUrls?: string[];
+    inlinePhotos?: Array<{ data?: string; mediaType?: string }>;
+    items?: string[];
+    loadSize?: string;
+    notes?: string;
+  };
   try {
     body = await request.json();
   } catch {
@@ -71,13 +77,24 @@ export async function POST(request: Request) {
   const photoUrls = (Array.isArray(body.photoUrls) ? body.photoUrls : [])
     .filter((url): url is string => typeof url === "string")
     .slice(0, 6);
+
+  // Photos sent as raw data instead of links — the path used when Cloudinary
+  // isn't configured. Claude sizes the load either way; only the hosted route
+  // leaves a link behind for the crew.
+  const inlinePhotos = (Array.isArray(body.inlinePhotos) ? body.inlinePhotos : [])
+    .filter(
+      (photo): photo is { data: string; mediaType: string } =>
+        typeof photo?.data === "string" && typeof photo?.mediaType === "string"
+    )
+    .slice(0, 6);
   const items = (Array.isArray(body.items) ? body.items : []).filter(
     (item): item is string => typeof item === "string"
   );
   const loadSize = toJson(body.loadSize);
   const notes = toJson(body.notes);
 
-  if (photoUrls.length === 0 && items.length === 0) {
+  const photoCount = photoUrls.length + inlinePhotos.length;
+  if (photoCount === 0 && items.length === 0) {
     return NextResponse.json(
       { ok: false, error: "Need photos or item types to estimate" },
       { status: 400 }
@@ -92,7 +109,7 @@ export async function POST(request: Request) {
         customerGuess ? ` (roughly ${customerGuess} cubic yards)` : ""
       } — treat this as a hint, not a fact.`,
     notes && `Customer notes: ${notes}`,
-    photoUrls.length === 0 && "No photos were provided.",
+    photoCount === 0 && "No photos were provided.",
   ]
     .filter(Boolean)
     .join("\n");
@@ -113,6 +130,14 @@ export async function POST(request: Request) {
             ...photoUrls.map((url) => ({
               type: "image" as const,
               source: { type: "url" as const, url },
+            })),
+            ...inlinePhotos.map((photo) => ({
+              type: "image" as const,
+              source: {
+                type: "base64" as const,
+                media_type: photo.mediaType as "image/jpeg",
+                data: photo.data,
+              },
             })),
             { type: "text" as const, text: description },
           ],

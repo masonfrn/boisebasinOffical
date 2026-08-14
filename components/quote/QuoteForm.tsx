@@ -17,20 +17,22 @@ import {
 } from "lucide-react";
 import { ITEM_TYPES, LOAD_SIZES } from "@/lib/constants";
 import { CLOUDINARY_CONFIGURED, toEstimateUrl, uploadPhoto } from "@/lib/cloudinary";
+import { previewUrlFor, shrinkForEstimate, type InlinePhoto } from "@/lib/photos";
 import { PRICING_CONFIGURED, formatPriceRange, type PriceRange } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import TruckLoadGauge from "./TruckLoadGauge";
 
 type Photo = {
   name: string;
-  /** Cloudinary URL once the upload lands. */
+  /** Cloudinary URL once the upload lands. Null on the inline path. */
   url: string | null;
   /**
-   * "local" means we never tried to upload because Cloudinary isn't configured —
-   * the form then behaves exactly as it did before photos were hosted, showing
-   * filenames. Without this the site would show "Upload failed" on every photo.
+   * Shrunk image data, kept in the browser and sent with the estimate request
+   * when there's no Cloudinary account to host it. Claude reads the photo
+   * either way; only the hosted path leaves a link for the crew in GHL.
    */
-  status: "uploading" | "ready" | "failed" | "local";
+  inline: InlinePhoto | null;
+  status: "uploading" | "ready" | "failed";
 };
 
 type Estimate = {
@@ -123,22 +125,13 @@ export default function QuoteForm() {
     setEstimateState("idle");
     setEstimate(null);
 
-    // No Cloudinary configured — keep the pre-hosting behaviour rather than
-    // showing the customer an upload error for something they can't fix.
-    if (!CLOUDINARY_CONFIGURED) {
-      setForm((prev) => ({
-        ...prev,
-        photos: files.map((file) => ({ name: file.name, url: null, status: "local" as const })),
-      }));
-      return;
-    }
-
-    // Show the filenames right away, then fill in each URL as its upload lands.
+    // Show the filenames right away, then settle each photo as it's ready.
     setForm((prev) => ({
       ...prev,
       photos: files.map((file) => ({
         name: file.name,
         url: null,
+        inline: null,
         status: "uploading" as const,
       })),
     }));
@@ -152,12 +145,27 @@ export default function QuoteForm() {
             return { ...prev, photos };
           });
 
-        try {
-          const url = await uploadPhoto(file);
-          settle({ name: file.name, url, status: "ready" });
-        } catch {
-          settle({ name: file.name, url: null, status: "failed" });
+        // Hosted when we can (leaves a link for the crew), shrunk-and-carried
+        // otherwise. Either way Claude gets to see the photo.
+        if (CLOUDINARY_CONFIGURED) {
+          try {
+            const url = await uploadPhoto(file);
+            settle({ name: file.name, url, inline: null, status: "ready" });
+            return;
+          } catch {
+            // Fall through — a shrunk copy still gets the customer an estimate.
+          }
         }
+
+        const inline = await shrinkForEstimate(file);
+        settle({
+          name: file.name,
+          url: null,
+          inline,
+          // A photo the browser couldn't decode (HEIC, usually) is dropped
+          // rather than failing the whole quote.
+          status: inline ? "ready" : "failed",
+        });
       })
     );
   }
@@ -177,6 +185,9 @@ export default function QuoteForm() {
             .map((photo) => photo.url)
             .filter((url): url is string => url !== null)
             .map(toEstimateUrl),
+          inlinePhotos: form.photos
+            .map((photo) => photo.inline)
+            .filter((photo): photo is InlinePhoto => photo !== null),
           items: form.items,
           loadSize: form.loadSize,
           notes: form.notes,
@@ -384,9 +395,7 @@ export default function QuoteForm() {
                     Tap to add photos
                   </span>
                   <span className="text-xs text-ink-muted">
-                    {CLOUDINARY_CONFIGURED
-                      ? "Optional — photos let us estimate your price instantly (up to 6)"
-                      : "Optional, but photos help us quote more accurately (up to 6)"}
+                    Optional — photos let us estimate your price instantly (up to 6)
                   </span>
                   <input
                     id="photo-upload"
@@ -405,15 +414,15 @@ export default function QuoteForm() {
                         key={`${photo.name}-${i}`}
                         className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-navy-50 text-[11px] font-medium text-ink-muted"
                       >
-                        {photo.status === "ready" && photo.url ? (
+                        {photo.status === "uploading" ? (
+                          <Loader2 size={18} className="animate-spin text-haul-500" />
+                        ) : photo.url ?? photo.inline ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={photo.url}
+                            src={photo.url ?? previewUrlFor(photo.inline!)}
                             alt={photo.name}
                             className="h-full w-full object-cover"
                           />
-                        ) : photo.status === "uploading" ? (
-                          <Loader2 size={18} className="animate-spin text-haul-500" />
                         ) : (
                           <span className="px-2 text-center leading-tight">{photo.name}</span>
                         )}
