@@ -3,11 +3,12 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Zapier Catch Hook that feeds the Go High Level account.
-// Override with ZAPIER_WEBHOOK_URL in the environment if the Zap ever changes.
-const WEBHOOK_URL =
-  process.env.ZAPIER_WEBHOOK_URL?.trim() ||
-  "https://hooks.zapier.com/hooks/catch/7361629/4tovgpv/";
+// Zapier Catch Hook feeding Go High Level. Set ZAPIER_WEBHOOK_URL in the
+// environment — there is deliberately no hardcoded fallback. The previous one
+// was rebuilt on Zapier's side and started returning 404 while still looking
+// configured, so leads bounced with nothing pointing at the cause. A hook URL
+// is also effectively a write credential, and this repo is public.
+const WEBHOOK_URL = process.env.ZAPIER_WEBHOOK_URL?.trim() ?? "";
 
 type Estimate = {
   cubicYards?: number;
@@ -123,6 +124,20 @@ export async function POST(request: Request) {
     submitted_at: new Date().toISOString(),
   };
 
+  // A lead that can't be delivered is worse than one that's merely late, so
+  // write the whole thing to the logs before giving up. It's recoverable from
+  // the Vercel dashboard that way instead of gone. This does put customer
+  // contact details in the runtime logs — an acceptable trade against losing
+  // paying work, but it's why the logs shouldn't be shared around.
+  function recordUndelivered(reason: string) {
+    console.error(`UNDELIVERED LEAD (${reason}) — recover manually:`, JSON.stringify(payload));
+  }
+
+  if (!WEBHOOK_URL) {
+    recordUndelivered("ZAPIER_WEBHOOK_URL is not set");
+    return NextResponse.json({ ok: false, error: "Lead delivery failed" }, { status: 503 });
+  }
+
   try {
     const res = await fetch(WEBHOOK_URL, {
       method: "POST",
@@ -132,11 +147,16 @@ export async function POST(request: Request) {
     });
 
     if (!res.ok) {
-      console.error(`Zapier webhook responded ${res.status}`, await res.text().catch(() => ""));
+      const detail = await res.text().catch(() => "");
+      // Zapier answers a deleted or disabled Catch Hook with 404 "please
+      // unsubscribe me!" — the URL is stale, not the payload.
+      console.error(`Zapier webhook responded ${res.status}`, detail);
+      recordUndelivered(`webhook returned ${res.status}`);
       return NextResponse.json({ ok: false, error: "Lead delivery failed" }, { status: 502 });
     }
   } catch (error) {
     console.error("Zapier webhook request failed", error);
+    recordUndelivered("webhook request threw");
     return NextResponse.json({ ok: false, error: "Lead delivery failed" }, { status: 502 });
   }
 
