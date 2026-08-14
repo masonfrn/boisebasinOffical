@@ -28,19 +28,29 @@ Then open http://localhost:3000.
    variable (set it in Vercel → Settings → Environment Variables to point at
    a different Zap). Photo *files* are not forwarded — only their filenames,
    so the crew knows to ask for them.
-2. **Google Business Profile URL** — `lib/constants.ts` → `BUSINESS.googleReviewUrl`
+2. **Set your real prices** — `lib/pricing.ts` holds `RATES` (minimum charge,
+   per-cubic-yard rate, surcharges). The values in there are placeholders, so
+   `PRICING_CONFIGURED` is `false` and the quote form shows the estimated
+   volume without a dollar figure. Put your real numbers in and flip that flag
+   to show customers a price range.
+3. **AI photo estimate** — photos upload to Cloudinary, then `app/api/estimate/route.ts`
+   asks Claude to size the load in cubic yards and flag anything hazardous.
+   Needs `ANTHROPIC_API_KEY` plus the two `NEXT_PUBLIC_CLOUDINARY_*` variables
+   (see `.env.example`). Without them the form works exactly as it did before —
+   no estimate panel, lead still submits.
+4. **Google Business Profile URL** — `lib/constants.ts` → `BUSINESS.googleReviewUrl`
    is already set from your QR code. Swap it out any time your review link
    changes.
-3. **Facebook page URL** — `lib/constants.ts` → `BUSINESS.facebookUrl` is a
+5. **Facebook page URL** — `lib/constants.ts` → `BUSINESS.facebookUrl` is a
    placeholder; update it to your real Facebook page.
-4. **Hero & illustration graphics** — `components/home/HeroIllustration.tsx`
+6. **Hero & illustration graphics** — `components/home/HeroIllustration.tsx`
    is an original SVG illustration used as a placeholder for real crew /
    truck photography. Swap it for an `<Image>` of your actual crew when you
    have photos (drop files in `/public` and reference them).
-5. **Site URL for SEO** — `app/layout.tsx`, `app/sitemap.ts`, and
+7. **Site URL for SEO** — `app/layout.tsx`, `app/sitemap.ts`, and
    `app/robots.ts` all reference `https://boisebasinjunkremoval.com`.
    Update this once you know your real domain.
-6. **Testimonials** — `lib/constants.ts` → `TESTIMONIALS` are placeholders.
+8. **Testimonials** — `lib/constants.ts` → `TESTIMONIALS` are placeholders.
    Replace with real customer quotes (with permission) as you collect them.
 
 ## Project structure
