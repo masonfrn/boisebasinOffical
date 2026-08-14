@@ -9,6 +9,15 @@ const WEBHOOK_URL =
   process.env.ZAPIER_WEBHOOK_URL?.trim() ||
   "https://hooks.zapier.com/hooks/catch/7361629/4tovgpv/";
 
+type Estimate = {
+  cubicYards?: number;
+  confidence?: string;
+  items?: Array<{ name?: string; quantity?: number; cubicYards?: number }>;
+  accessNotes?: string;
+  cannotHaul?: string[];
+  price?: { low?: number; high?: number; midpoint?: number };
+};
+
 type QuotePayload = {
   items?: string[];
   loadSize?: string;
@@ -21,6 +30,8 @@ type QuotePayload = {
   email?: string;
   notes?: string;
   photoNames?: string[];
+  photoUrls?: string[];
+  estimate?: Estimate | null;
   pageUrl?: string;
 };
 
@@ -72,6 +83,8 @@ export async function POST(request: Request) {
   const zip = str(body.zip);
   const items = list(body.items);
   const photoNames = list(body.photoNames);
+  const photoUrls = list(body.photoUrls);
+  const estimate = body.estimate ?? null;
 
   // Flat, snake_case keys so each one maps straight to a GHL field in Zapier.
   const payload = {
@@ -92,6 +105,19 @@ export async function POST(request: Request) {
     notes: str(body.notes),
     photo_count: photoNames.length,
     photo_names: photoNames.join(", "),
+    // Hosted photo links, so the crew can actually look at the job from GHL.
+    photo_urls: photoUrls.join(", "),
+    photo_url_1: photoUrls[0] ?? "",
+    // AI estimate — blank when the customer skipped photos or the estimate failed.
+    estimated_cubic_yards: estimate?.cubicYards ?? "",
+    estimate_confidence: estimate?.confidence ?? "",
+    estimated_price_low: estimate?.price?.low ?? "",
+    estimated_price_high: estimate?.price?.high ?? "",
+    estimated_items: (estimate?.items ?? [])
+      .map((item) => `${item.quantity ?? 1}× ${item.name ?? "item"}`)
+      .join(", "),
+    estimate_access_notes: estimate?.accessNotes ?? "",
+    cannot_haul: (estimate?.cannotHaul ?? []).join(", "),
     source: "Website — Instant Quote Form",
     page_url: str(body.pageUrl),
     submitted_at: new Date().toISOString(),

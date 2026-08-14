@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Camera,
@@ -10,17 +11,36 @@ import {
   Loader2,
   MapPin,
   PartyPopper,
+  Sparkles,
   User,
   X,
 } from "lucide-react";
 import { ITEM_TYPES, LOAD_SIZES } from "@/lib/constants";
+import { CLOUDINARY_CONFIGURED, toEstimateUrl, uploadPhoto } from "@/lib/cloudinary";
+import { PRICING_CONFIGURED, formatPriceRange, type PriceRange } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import TruckLoadGauge from "./TruckLoadGauge";
+
+type Photo = {
+  name: string;
+  /** Cloudinary URL once the upload lands; null while uploading or on failure. */
+  url: string | null;
+  failed?: boolean;
+};
+
+type Estimate = {
+  cubicYards: number;
+  confidence: "low" | "medium" | "high";
+  items: Array<{ name: string; quantity: number; cubicYards: number }>;
+  accessNotes: string;
+  cannotHaul: string[];
+  price: PriceRange;
+};
 
 type FormState = {
   items: string[];
   loadSize: string;
-  photos: File[];
+  photos: Photo[];
   street: string;
   city: string;
   zip: string;
@@ -66,12 +86,17 @@ export default function QuoteForm() {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormState>(initialState);
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [estimate, setEstimate] = useState<Estimate | null>(null);
+  const [estimateState, setEstimateState] = useState<"idle" | "loading" | "done" | "failed">(
+    "idle"
+  );
 
   const totalSteps = STEP_TITLES.length;
   const selectedLoad = useMemo(
     () => LOAD_SIZES.find((l) => l.label === form.loadSize),
     [form.loadSize]
   );
+  const uploading = form.photos.some((photo) => photo.url === null && !photo.failed);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -86,14 +111,77 @@ export default function QuoteForm() {
     }));
   }
 
-  function onPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []).slice(0, 6);
-    update("photos", files);
+    if (files.length === 0) return;
+
+    // Show the filenames right away, then fill in each URL as its upload lands.
+    setForm((prev) => ({
+      ...prev,
+      photos: files.map((file) => ({ name: file.name, url: null })),
+    }));
+    setEstimateState("idle");
+    setEstimate(null);
+
+    await Promise.all(
+      files.map(async (file, index) => {
+        try {
+          const url = await uploadPhoto(file);
+          setForm((prev) => {
+            const photos = [...prev.photos];
+            if (photos[index]?.name === file.name) photos[index] = { name: file.name, url };
+            return { ...prev, photos };
+          });
+        } catch {
+          setForm((prev) => {
+            const photos = [...prev.photos];
+            if (photos[index]?.name === file.name) {
+              photos[index] = { name: file.name, url: null, failed: true };
+            }
+            return { ...prev, photos };
+          });
+        }
+      })
+    );
   }
 
   function removePhoto(index: number) {
     setForm((prev) => ({ ...prev, photos: prev.photos.filter((_, i) => i !== index) }));
   }
+
+  const runEstimate = useCallback(async () => {
+    setEstimateState("loading");
+    try {
+      const res = await fetch("/api/estimate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          photoUrls: form.photos
+            .map((photo) => photo.url)
+            .filter((url): url is string => url !== null)
+            .map(toEstimateUrl),
+          items: form.items,
+          loadSize: form.loadSize,
+          notes: form.notes,
+        }),
+      });
+      if (!res.ok) throw new Error("Estimate failed");
+      const data = (await res.json()) as { estimate: Estimate };
+      setEstimate(data.estimate);
+      setEstimateState("done");
+    } catch {
+      // A failed estimate is cosmetic — the lead still submits without it.
+      setEstimateState("failed");
+    }
+  }, [form.photos, form.items, form.loadSize, form.notes]);
+
+  // Estimate once the customer reaches the last step, so the wait overlaps with
+  // them filling in their contact details.
+  useEffect(() => {
+    if (step === totalSteps - 1 && estimateState === "idle" && !uploading) {
+      void runEstimate();
+    }
+  }, [step, totalSteps, estimateState, uploading, runEstimate]);
 
   const canAdvance = (() => {
     switch (step) {
@@ -140,9 +228,11 @@ export default function QuoteForm() {
           phone: form.phone,
           email: form.email,
           notes: form.notes,
-          // Files themselves can't ride along to the webhook — send the names so
-          // the crew knows photos exist and can ask for them on the callback.
-          photoNames: form.photos.map((file) => file.name),
+          photoNames: form.photos.map((photo) => photo.name),
+          photoUrls: form.photos
+            .map((photo) => photo.url)
+            .filter((url): url is string => url !== null),
+          estimate,
           pageUrl: typeof window !== "undefined" ? window.location.href : "",
         }),
       });
@@ -169,6 +259,8 @@ export default function QuoteForm() {
             setForm(initialState);
             setStep(0);
             setStatus("idle");
+            setEstimate(null);
+            setEstimateState("idle");
           }}
           className="mt-6 font-display text-sm font-semibold text-haul-500 hover:text-haul-600"
         >
@@ -275,7 +367,9 @@ export default function QuoteForm() {
                     Tap to add photos
                   </span>
                   <span className="text-xs text-ink-muted">
-                    Optional, but photos help us quote more accurately (up to 6)
+                    {CLOUDINARY_CONFIGURED
+                      ? "Optional — photos let us estimate your price instantly (up to 6)"
+                      : "Optional, but photos help us quote more accurately (up to 6)"}
                   </span>
                   <input
                     id="photo-upload"
@@ -289,16 +383,29 @@ export default function QuoteForm() {
 
                 {form.photos.length > 0 && (
                   <div className="mt-4 grid grid-cols-3 gap-2.5 sm:grid-cols-4">
-                    {form.photos.map((file, i) => (
+                    {form.photos.map((photo, i) => (
                       <div
-                        key={i}
+                        key={`${photo.name}-${i}`}
                         className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-navy-50 text-[11px] font-medium text-ink-muted"
                       >
-                        <span className="px-2 text-center leading-tight">{file.name}</span>
+                        {photo.url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={photo.url}
+                            alt={photo.name}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : photo.failed ? (
+                          <span className="px-2 text-center leading-tight text-basin-600">
+                            Upload failed
+                          </span>
+                        ) : (
+                          <Loader2 size={18} className="animate-spin text-haul-500" />
+                        )}
                         <button
                           type="button"
                           onClick={() => removePhoto(i)}
-                          aria-label={`Remove ${file.name}`}
+                          aria-label={`Remove ${photo.name}`}
                           className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-navy text-white"
                         >
                           <X size={13} />
@@ -393,6 +500,7 @@ export default function QuoteForm() {
 
             {step === 5 && (
               <div className="mt-5 space-y-4">
+                <EstimatePanel state={estimateState} estimate={estimate} />
                 <Field label="Full Name" htmlFor="name" required>
                   <input
                     id="name"
@@ -499,6 +607,93 @@ export default function QuoteForm() {
 
 const inputClass =
   "w-full rounded-xl border-2 border-navy/10 bg-white px-4 py-3 text-sm text-ink placeholder:text-ink-muted/60 outline-none transition-colors focus:border-haul-400";
+
+function EstimatePanel({
+  state,
+  estimate,
+}: {
+  state: "idle" | "loading" | "done" | "failed";
+  estimate: Estimate | null;
+}) {
+  // A failed estimate stays silent — the customer still gets a callback, and an
+  // error here would only make them doubt the quote request went through.
+  if (state === "failed" || state === "idle") return null;
+
+  if (state === "loading") {
+    return (
+      <div className="flex items-center gap-3 rounded-2xl border-2 border-haul-200 bg-haul-50/60 px-4 py-3.5">
+        <Loader2 size={18} className="animate-spin text-haul-500" />
+        <span className="text-sm font-medium text-ink-soft">
+          Sizing up your load — this takes a few seconds.
+        </span>
+      </div>
+    );
+  }
+
+  if (!estimate) return null;
+
+  const rough = estimate.confidence === "low";
+
+  return (
+    <div className="rounded-2xl border-2 border-haul-200 bg-haul-50/60 p-4 sm:p-5">
+      <div className="flex items-center gap-2">
+        <Sparkles size={16} className="text-haul-500" />
+        <span className="font-display text-xs font-bold uppercase tracking-[0.14em] text-haul-600">
+          {rough ? "Rough estimate" : "Your estimate"}
+        </span>
+      </div>
+
+      {PRICING_CONFIGURED ? (
+        <>
+          <p className="mt-2 font-display text-3xl font-bold text-navy">
+            {formatPriceRange(estimate.price)}
+          </p>
+          <p className="mt-1 text-xs text-ink-muted">
+            About {estimate.cubicYards} cubic yards. Final price is confirmed on site before we
+            load anything.
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="mt-2 font-display text-2xl font-bold text-navy">
+            About {estimate.cubicYards} cubic yards
+          </p>
+          <p className="mt-1 text-xs text-ink-muted">
+            We&apos;ll confirm your price when we call — usually within the hour.
+          </p>
+        </>
+      )}
+
+      {estimate.items.length > 0 && (
+        <ul className="mt-4 space-y-1.5 border-t border-haul-200 pt-3">
+          {estimate.items.map((item, i) => (
+            <li key={`${item.name}-${i}`} className="flex justify-between gap-3 text-sm">
+              <span className="text-ink-soft">
+                {item.quantity > 1 && `${item.quantity}× `}
+                {item.name}
+              </span>
+              <span className="shrink-0 text-ink-muted">{item.cubicYards} yd³</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {estimate.accessNotes && (
+        <p className="mt-3 text-xs text-ink-muted">{estimate.accessNotes}</p>
+      )}
+
+      {estimate.cannotHaul.length > 0 && (
+        <div className="mt-3 flex gap-2 rounded-xl bg-white/70 px-3 py-2.5">
+          <AlertTriangle size={15} className="mt-0.5 shrink-0 text-basin-500" />
+          <p className="text-xs text-ink-soft">
+            We can&apos;t haul {estimate.cannotHaul.join(", ")} — your local household hazardous
+            waste facility takes those. Everything else we&apos;ll handle.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Field({
   label,
