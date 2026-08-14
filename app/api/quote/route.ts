@@ -148,9 +148,14 @@ export async function POST(request: Request) {
 
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
-      // Zapier answers a deleted or disabled Catch Hook with 404 "please
-      // unsubscribe me!" — the URL is stale, not the payload.
-      console.error(`Zapier webhook responded ${res.status}`, detail);
+      // Zapier answers 404 "please unsubscribe me!" whenever the Zap behind the
+      // hook is switched off or deleted — the same response a genuinely wrong
+      // URL gives. Log a masked fingerprint of the hook we actually used so the
+      // two can be told apart without guessing which URL is deployed.
+      console.error(
+        `Zapier webhook responded ${res.status} (hook …${WEBHOOK_URL.slice(-12)})`,
+        detail
+      );
       recordUndelivered(`webhook returned ${res.status}`);
       return NextResponse.json({ ok: false, error: "Lead delivery failed" }, { status: 502 });
     }
