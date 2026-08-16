@@ -3,15 +3,32 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Phone, Truck } from "lucide-react";
+import { Menu, X, Phone, Truck, ChevronDown } from "lucide-react";
 import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
-import { BUSINESS, NAV_LINKS } from "@/lib/constants";
+import { BUSINESS, NAV_LINKS, type NavLink } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+
+// A dropdown tab counts as "current" for any page underneath it, not just its
+// own href — /services/furniture-removal/boise-id should still light up the
+// Services tab.
+function isSectionActive(link: NavLink, pathname: string) {
+  if (pathname === link.href) return true;
+  return (
+    link.children?.some(
+      (child) => pathname === child.href || pathname.startsWith(`${child.href}/`)
+    ) ?? false
+  );
+}
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  // Which desktop dropdown is showing, and which mobile section is expanded —
+  // separate because the two menus can be mounted at the same time on a tablet
+  // rotation and shouldn't fight over one piece of state.
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [openSection, setOpenSection] = useState<string | null>(null);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -23,7 +40,21 @@ export default function Navbar() {
 
   useEffect(() => {
     setOpen(false);
+    setOpenMenu(null);
+    setOpenSection(null);
   }, [pathname]);
+
+  // Escape closes whatever is open, so a keyboard user is never trapped in a
+  // menu that hover alone would have dismissed.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpenMenu(null);
+      setOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   return (
     <header
@@ -50,19 +81,101 @@ export default function Navbar() {
             </span>
           </Link>
 
-          <nav className="hidden items-center gap-8 lg:flex">
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  "font-display text-sm font-semibold text-ink-soft transition-colors hover:text-basin-500",
-                  pathname === link.href && "text-basin-500"
-                )}
-              >
-                {link.label}
-              </Link>
-            ))}
+          <nav className="hidden items-center gap-6 lg:flex">
+            {NAV_LINKS.map((link) => {
+              const active = isSectionActive(link, pathname);
+
+              if (!link.children) {
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={cn(
+                      "font-display text-sm font-semibold text-ink-soft transition-colors hover:text-basin-500",
+                      active && "text-basin-500"
+                    )}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              }
+
+              const expanded = openMenu === link.label;
+
+              return (
+                <div
+                  key={link.href}
+                  className="relative"
+                  onMouseEnter={() => setOpenMenu(link.label)}
+                  onMouseLeave={() =>
+                    setOpenMenu((current) =>
+                      current === link.label ? null : current
+                    )
+                  }
+                >
+                  <button
+                    type="button"
+                    aria-haspopup="menu"
+                    aria-expanded={expanded}
+                    onClick={() =>
+                      setOpenMenu((current) =>
+                        current === link.label ? null : link.label
+                      )
+                    }
+                    className={cn(
+                      "flex items-center gap-1 font-display text-sm font-semibold text-ink-soft transition-colors hover:text-basin-500",
+                      (active || expanded) && "text-basin-500"
+                    )}
+                  >
+                    {link.label}
+                    <ChevronDown
+                      size={15}
+                      className={cn(
+                        "transition-transform duration-200",
+                        expanded && "rotate-180"
+                      )}
+                    />
+                  </button>
+
+                  {/* The wrapper owns the centering transform so the panel is
+                      free to animate its own translate without cancelling it.
+                      pt-2 keeps a hover bridge between tab and panel. */}
+                  <div className="absolute left-1/2 top-full z-50 w-64 -translate-x-1/2 pt-3">
+                    <div
+                      className={cn(
+                        "rounded-2xl border border-navy/5 bg-white p-2 shadow-[0_18px_44px_-14px_rgba(11,37,69,0.32)] transition-all duration-200",
+                        expanded
+                          ? "visible translate-y-0 opacity-100"
+                          : "invisible -translate-y-1 opacity-0"
+                      )}
+                    >
+                      <Link
+                        href={link.href}
+                        onClick={() => setOpenMenu(null)}
+                        className="block rounded-lg px-3 py-2 font-display text-sm font-bold text-navy hover:bg-navy-50"
+                      >
+                        All {link.label}
+                      </Link>
+                      <div className="my-1 h-px bg-navy/5" />
+                      {link.children.map((child) => (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          onClick={() => setOpenMenu(null)}
+                          className={cn(
+                            "block rounded-lg px-3 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-navy-50 hover:text-basin-600",
+                            pathname === child.href &&
+                              "bg-basin-50 text-basin-600"
+                          )}
+                        >
+                          {child.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </nav>
 
           <div className="hidden items-center gap-3 lg:flex">
@@ -90,23 +203,86 @@ export default function Navbar() {
 
       <div
         className={cn(
-          "overflow-hidden bg-white shadow-lg transition-[max-height] duration-300 ease-in-out lg:hidden",
-          open ? "max-h-[420px]" : "max-h-0"
+          "bg-white shadow-lg transition-[max-height] duration-300 ease-in-out lg:hidden",
+          // Expanded sections can run past the old fixed height, so the sheet
+          // is capped at the viewport and scrolls instead of clipping items.
+          open
+            ? "max-h-[calc(100vh-72px)] overflow-y-auto"
+            : "max-h-0 overflow-hidden"
         )}
       >
         <Container className="flex flex-col gap-1 py-4">
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={cn(
-                "rounded-lg px-3 py-3 font-display text-base font-semibold text-ink-soft hover:bg-navy-50",
-                pathname === link.href && "bg-basin-50 text-basin-600"
-              )}
-            >
-              {link.label}
-            </Link>
-          ))}
+          {NAV_LINKS.map((link) => {
+            const active = isSectionActive(link, pathname);
+
+            if (!link.children) {
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "rounded-lg px-3 py-3 font-display text-base font-semibold text-ink-soft hover:bg-navy-50",
+                    active && "bg-basin-50 text-basin-600"
+                  )}
+                >
+                  {link.label}
+                </Link>
+              );
+            }
+
+            const expanded = openSection === link.label;
+
+            return (
+              <div key={link.href}>
+                <button
+                  type="button"
+                  aria-expanded={expanded}
+                  onClick={() =>
+                    setOpenSection((current) =>
+                      current === link.label ? null : link.label
+                    )
+                  }
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-lg px-3 py-3 font-display text-base font-semibold text-ink-soft hover:bg-navy-50",
+                    active && "bg-basin-50 text-basin-600"
+                  )}
+                >
+                  {link.label}
+                  <ChevronDown
+                    size={18}
+                    className={cn(
+                      "transition-transform duration-200",
+                      expanded && "rotate-180"
+                    )}
+                  />
+                </button>
+
+                {expanded && (
+                  <div className="mt-1 flex flex-col gap-0.5 border-l-2 border-basin-100 pl-3">
+                    <Link
+                      href={link.href}
+                      className="rounded-lg px-3 py-2.5 font-display text-sm font-bold text-navy hover:bg-navy-50"
+                    >
+                      All {link.label}
+                    </Link>
+                    {link.children.map((child) => (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        className={cn(
+                          "rounded-lg px-3 py-2.5 text-sm font-medium text-ink-soft hover:bg-navy-50",
+                          pathname === child.href &&
+                            "bg-basin-50 text-basin-600"
+                        )}
+                      >
+                        {child.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
           <div className="mt-2 flex flex-col gap-3 border-t border-navy/10 pt-4">
             <Button href="/quote" size="md" className="justify-center">
               Get Instant Quote

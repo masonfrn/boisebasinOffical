@@ -34,7 +34,9 @@ const ICONS = [
 
 export default function ServicesGrid() {
   return (
-    <section className="bg-white py-16 sm:py-24">
+    // The "All Services" entry in the navbar dropdown points at /#services, so
+    // the anchor has to live here; scroll-mt clears the sticky 72px header.
+    <section id="services" className="scroll-mt-[72px] bg-white py-16 sm:py-24">
       <Container>
         <SectionHeading
           eyebrow="What We Haul"

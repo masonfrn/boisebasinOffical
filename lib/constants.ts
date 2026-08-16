@@ -43,15 +43,6 @@ export const SERVICE_AREAS = [
   "Middleton",
 ];
 
-export const NAV_LINKS = [
-  { label: "Home", href: "/" },
-  { label: "Instant Quote", href: "/quote" },
-  { label: "About", href: "/about" },
-  { label: "Service Areas", href: "/service-areas" },
-  { label: "Resources", href: "/resources" },
-  { label: "Contact", href: "/contact" },
-];
-
 export const ITEM_TYPES = [
   "Furniture",
   "Appliances",
@@ -554,4 +545,45 @@ export const SERVICE_PAGES: ServicePageContent[] = [
       },
     ],
   },
+];
+
+export type NavLink = {
+  label: string;
+  href: string;
+  // Present only on the tabs that open a dropdown. The parent href is still a
+  // real destination — it's the "All ..." entry inside the menu, and it's what
+  // the footer links to, since the footer has no dropdowns.
+  children?: Array<{ label: string; href: string }>;
+};
+
+// Defined here at the bottom rather than up top because the two dropdowns are
+// built from SERVICES and CITY_PAGES — the menus can't drift out of sync with
+// the pages that actually exist.
+export const NAV_LINKS: NavLink[] = [
+  { label: "Home", href: "/" },
+  { label: "Instant Quote", href: "/quote" },
+  {
+    label: "Services",
+    href: "/#services",
+    // Matched on slug for the same reason ServicesGrid does: the short card
+    // labels ("Yard Waste") don't equal the page titles ("Yard Waste
+    // Removal"), so a title match would silently drop entries.
+    children: SERVICES.filter((service) =>
+      SERVICE_PAGES.some((page) => page.slug === service.slug)
+    ).map((service) => ({
+      label: service.title,
+      href: `/services/${service.slug}`,
+    })),
+  },
+  {
+    label: "Service Areas",
+    href: "/service-areas",
+    children: CITY_PAGES.map((city) => ({
+      label: `${city.name}, ID`,
+      href: `/junk-removal/${city.slug}`,
+    })),
+  },
+  { label: "About", href: "/about" },
+  { label: "Resources", href: "/resources" },
+  { label: "Contact", href: "/contact" },
 ];
