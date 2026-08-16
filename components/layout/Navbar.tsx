@@ -138,9 +138,24 @@ export default function Navbar() {
                   </button>
 
                   {/* The wrapper owns the centering transform so the panel is
-                      free to animate its own translate without cancelling it.
-                      pt-2 keeps a hover bridge between tab and panel. */}
-                  <div className="absolute left-1/2 top-full z-50 w-64 -translate-x-1/2 pt-3">
+                      free to animate its own translate without cancelling it,
+                      and its pt-3 is the hover bridge between tab and panel.
+
+                      A closed wrapper must not take the mouse. The panel inside
+                      it is `invisible`, which still occupies its full layout box
+                      — 16rem wide, centered, so it reaches well past its own tab
+                      and over the neighbour's open menu. Left hit-testable, that
+                      empty box swallowed hovers meant for the panel underneath
+                      and fired this tab's onMouseEnter, so sliding right through
+                      the Services list snapped open Service Areas instead. */}
+                  <div
+                    className={cn(
+                      "absolute left-1/2 top-full w-64 -translate-x-1/2 pt-3",
+                      expanded
+                        ? "pointer-events-auto z-50"
+                        : "pointer-events-none z-40"
+                    )}
+                  >
                     <div
                       className={cn(
                         "rounded-2xl border border-navy/5 bg-white p-2 shadow-[0_18px_44px_-14px_rgba(11,37,69,0.32)] transition-all duration-200",
