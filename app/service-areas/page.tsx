@@ -4,6 +4,7 @@ import { MapPin } from "lucide-react";
 import Container from "@/components/ui/Container";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Button from "@/components/ui/Button";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import ServiceAreaMap from "@/components/home/ServiceAreaMap";
 import { SERVICE_AREAS, CITY_PAGES } from "@/lib/constants";
 
@@ -32,6 +33,7 @@ export default function ServiceAreasPage() {
     <>
       <section className="bg-white py-16 sm:py-20">
         <Container className="max-w-2xl text-center mx-auto">
+          <Breadcrumbs trail={[{ name: "Service Areas" }]} className="flex justify-center" />
           <span className="font-display text-xs font-bold uppercase tracking-[0.18em] text-basin-500">
             Coverage Area
           </span>

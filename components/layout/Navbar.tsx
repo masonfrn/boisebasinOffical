@@ -81,7 +81,9 @@ export default function Navbar() {
             </span>
           </Link>
 
-          <nav className="hidden items-center gap-6 lg:flex">
+          {/* gap-5, not gap-6: the Pricing tab took the desktop row to eight
+              items, which overran the logo and phone number at exactly 1024px. */}
+          <nav className="hidden items-center gap-5 lg:flex">
             {NAV_LINKS.map((link) => {
               const active = isSectionActive(link, pathname);
 

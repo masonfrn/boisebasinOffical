@@ -5,6 +5,7 @@ import { MapPin, CheckCircle2, ArrowRight } from "lucide-react";
 import Container from "@/components/ui/Container";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Button from "@/components/ui/Button";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import { BUSINESS, SITE_URL, CITY_PAGES, SERVICE_PAGES } from "@/lib/constants";
 import { LOCAL_PAGE_PARAMS, getLocalPage, localPagePath } from "@/lib/localPages";
 
@@ -68,26 +69,6 @@ export default function ServiceCityPage({ params }: { params: Params }) {
     ...service.faqs,
   ];
 
-  const breadcrumbJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: service.title,
-        item: `${SITE_URL}/services/${service.slug}`,
-      },
-      {
-        "@type": "ListItem",
-        position: 3,
-        name: `${service.title} in ${city.name}, ID`,
-        item: `${SITE_URL}${path}`,
-      },
-    ],
-  };
-
   const serviceJsonLd = {
     "@context": "https://schema.org",
     "@type": "Service",
@@ -125,10 +106,6 @@ export default function ServiceCityPage({ params }: { params: Params }) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
-      />
-      <script
-        type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceJsonLd) }}
       />
       <script
@@ -138,23 +115,13 @@ export default function ServiceCityPage({ params }: { params: Params }) {
 
       <section className="bg-white py-16 sm:py-20">
         <Container className="max-w-3xl">
-          <nav aria-label="Breadcrumb" className="mb-5">
-            <ol className="flex flex-wrap items-center gap-1.5 text-xs text-ink-muted">
-              <li>
-                <Link href="/" className="hover:text-basin-500">
-                  Home
-                </Link>
-              </li>
-              <li aria-hidden="true">/</li>
-              <li>
-                <Link href={`/services/${service.slug}`} className="hover:text-basin-500">
-                  {service.title}
-                </Link>
-              </li>
-              <li aria-hidden="true">/</li>
-              <li className="font-semibold text-navy">{city.name}</li>
-            </ol>
-          </nav>
+          <Breadcrumbs
+            trail={[
+              { name: "Services", href: "/services" },
+              { name: service.title, href: `/services/${service.slug}` },
+              { name: city.name },
+            ]}
+          />
 
           <span className="font-display text-xs font-bold uppercase tracking-[0.18em] text-basin-500">
             {city.name}, Idaho

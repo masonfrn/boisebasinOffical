@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import Container from "@/components/ui/Container";
 import SectionHeading from "@/components/ui/SectionHeading";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import { RESOURCES } from "@/lib/resources";
 
 export const metadata: Metadata = {
@@ -18,6 +19,7 @@ export default function ResourcesPage() {
   return (
     <section className="bg-white py-16 sm:py-24">
       <Container className="max-w-3xl">
+        <Breadcrumbs trail={[{ name: "Resources" }]} />
         <SectionHeading
           as="h1"
           eyebrow="Guides"

@@ -45,7 +45,7 @@ const RANGE_SPREAD = 0.15;
  * so a mattress is just its volume. Charging extra put standalone mattress
  * pickups ~$50 over what the local market quotes.
  */
-const SURCHARGES: Record<string, number> = {
+export const SURCHARGES: Record<string, number> = {
   "Hot Tub": 200, // teardown + haul; lands jobs at ~$435 vs local $300–600
   Appliances: 30, // $25/item county fee + refrigerant handling
   Electronics: 20, // e-waste fees
@@ -56,8 +56,59 @@ const SURCHARGES: Record<string, number> = {
  * of concrete or dirt runs ~2 tons — the tipping fee alone outruns the volume
  * charge. Applied per cubic yard when these item types are selected.
  */
-const HEAVY_MATERIAL_TYPES = ["Construction Debris", "Yard Waste"];
-const HEAVY_MATERIAL_PER_YARD = 35;
+export const HEAVY_MATERIAL_TYPES = ["Construction Debris", "Yard Waste"];
+export const HEAVY_MATERIAL_PER_YARD = 35;
+
+/**
+ * The load sizes the public pricing page publishes, as fractions of a truck.
+ *
+ * Exported from here rather than written out on the page so the published table
+ * and the Instant Quote form can never quote two different numbers for the same
+ * load — the page runs these through `priceForCubicYards` like any other quote.
+ */
+export const PUBLISHED_LOAD_SIZES: ReadonlyArray<{
+  label: string;
+  fraction: string;
+  yards: number;
+  description: string;
+}> = [
+  {
+    label: "Single Item",
+    fraction: "Minimum",
+    yards: 1,
+    description: "One couch, one mattress, one appliance — the curbside pickup.",
+  },
+  {
+    label: "Eighth Truck",
+    fraction: "⅛",
+    yards: 2,
+    description: "A small bedroom set, or a few boxes and a chair.",
+  },
+  {
+    label: "Quarter Truck",
+    fraction: "¼",
+    yards: 4,
+    description: "A studio apartment's worth, or one corner of a full garage.",
+  },
+  {
+    label: "Half Truck",
+    fraction: "½",
+    yards: 8,
+    description: "A typical garage cleanout or a one-bedroom clear-out.",
+  },
+  {
+    label: "Three-Quarter Truck",
+    fraction: "¾",
+    yards: 12,
+    description: "A large garage, a small estate, or a full storage unit.",
+  },
+  {
+    label: "Full Truck",
+    fraction: "Full",
+    yards: TRUCK_CAPACITY_YARDS,
+    description: "A full storage unit, a whole basement, or a rental turnover.",
+  },
+];
 
 export type PriceRange = {
   low: number;

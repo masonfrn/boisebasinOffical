@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Phone, Mail, MapPin, Facebook, Star, Truck } from "lucide-react";
 import Container from "@/components/ui/Container";
-import { BUSINESS, NAV_LINKS, SERVICE_AREAS } from "@/lib/constants";
+import { BUSINESS, NAV_LINKS, SERVICE_AREAS, CITY_PAGES } from "@/lib/constants";
 
 export default function Footer() {
   const year = new Date().getFullYear();
@@ -59,10 +59,24 @@ export default function Footer() {
             <MapPin size={16} className="mt-0.5 shrink-0" />
             {BUSINESS.serviceRegion}
           </p>
+          {/* Linked, not plain text: a sitewide footer link is the main thing
+              pointing at the eight city pages from every other page on the
+              site. Falls back to the hub for any SERVICE_AREAS entry that
+              doesn't have a page of its own yet. */}
           <ul className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm text-white/60">
-            {SERVICE_AREAS.map((area) => (
-              <li key={area}>{area}</li>
-            ))}
+            {SERVICE_AREAS.map((area) => {
+              const cityPage = CITY_PAGES.find((c) => c.name === area);
+              return (
+                <li key={area}>
+                  <Link
+                    href={cityPage ? `/junk-removal/${cityPage.slug}` : "/service-areas"}
+                    className="hover:text-white"
+                  >
+                    {area}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </div>
 

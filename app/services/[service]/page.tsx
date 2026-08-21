@@ -5,6 +5,7 @@ import { CheckCircle2, MapPin, ArrowRight } from "lucide-react";
 import Container from "@/components/ui/Container";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Button from "@/components/ui/Button";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import { SERVICE_PAGES, CITY_PAGES, BUSINESS } from "@/lib/constants";
 import { localPagePath } from "@/lib/localPages";
 
@@ -67,6 +68,12 @@ export default function ServicePage({ params }: { params: { service: string } })
 
       <section className="bg-white py-16 sm:py-20">
         <Container className="max-w-3xl">
+          <Breadcrumbs
+            trail={[
+              { name: "Services", href: "/services" },
+              { name: service.title },
+            ]}
+          />
           <span className="font-display text-xs font-bold uppercase tracking-[0.18em] text-basin-500">
             Treasure Valley
           </span>

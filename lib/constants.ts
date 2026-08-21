@@ -562,9 +562,13 @@ export type NavLink = {
 export const NAV_LINKS: NavLink[] = [
   { label: "Home", href: "/" },
   { label: "Instant Quote", href: "/quote" },
+  { label: "Pricing", href: "/pricing" },
   {
     label: "Services",
-    href: "/#services",
+    // A real hub page, not the homepage's #services anchor. The dropdown's
+    // "All Services" entry uses this href, so the ten service pages now hang
+    // off a page that can rank on its own instead of a fragment link.
+    href: "/services",
     // Matched on slug for the same reason ServicesGrid does: the short card
     // labels ("Yard Waste") don't equal the page titles ("Yard Waste
     // Removal"), so a title match would silently drop entries.

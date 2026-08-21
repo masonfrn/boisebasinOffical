@@ -8,12 +8,14 @@ const siteUrl = SITE_URL;
 // Bump this only when core page content actually changes — see the SEO audit
 // note on sitemap.ts about lastModified previously being set to "now" on
 // every build, which falsely told Google every page changed on every deploy.
-const CORE_LAST_MODIFIED = new Date("2026-08-05");
+const CORE_LAST_MODIFIED = new Date("2026-08-18");
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const coreRoutes: MetadataRoute.Sitemap = [
     "",
     "/quote",
+    "/pricing",
+    "/services",
     "/about",
     "/service-areas",
     "/contact",
@@ -21,7 +23,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     url: `${siteUrl}${route}`,
     lastModified: CORE_LAST_MODIFIED,
     changeFrequency: "monthly",
-    priority: route === "" ? 1 : 0.8,
+    // /pricing and /services are hubs that funnel to the money pages, so they
+    // sit above the rest of the core set but below the homepage.
+    priority: route === "" ? 1 : route === "/pricing" || route === "/services" ? 0.9 : 0.8,
   }));
 
   const cityRoutes: MetadataRoute.Sitemap = CITY_PAGES.map((city) => ({
