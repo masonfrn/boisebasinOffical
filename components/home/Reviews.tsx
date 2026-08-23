@@ -14,13 +14,16 @@ import { cn } from "@/lib/utils";
  * page where the goal is finishing the form.
  */
 export function ReviewCards({
+  reviews = TESTIMONIALS,
   limit,
   className,
 }: {
+  /** Defaults to every testimonial; pass a subset to scope it, e.g. to a service. */
+  reviews?: typeof TESTIMONIALS;
   limit?: number;
   className?: string;
 }) {
-  const shown = limit ? TESTIMONIALS.slice(0, limit) : TESTIMONIALS;
+  const shown = limit ? reviews.slice(0, limit) : reviews;
   const count = shown.length;
 
   if (count === 0) {

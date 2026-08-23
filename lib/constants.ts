@@ -119,9 +119,16 @@ export const TESTIMONIALS: Array<{
   location?: string;
   quote: string;
   rating: number;
+  /**
+   * Set only when the review describes a job we can actually identify as that
+   * service — it surfaces the review on that service's page. Left off when the
+   * review is general praise, rather than guessed at from wording.
+   */
+  serviceSlug?: string;
 }> = [
   {
     name: "Kevin Shea",
+    serviceSlug: "yard-waste-removal",
     quote:
       "Stone and Mason from Boise Basin Junk Removal were OUTSTANDING! I was clearing a planter by myself in the July heat and needed help. I got in touch with Stone and he was very helpful and understanding. Stone and Mason showed up later that same day and worked late. They worked hard and with minimal guidance needed. They are pleasant, friendly, and competent. They came back the next morning to help finish the job and to haul all the debris to the landfill. I was very pleased with their service and will definitely be using them again!",
     rating: 5,

@@ -6,7 +6,8 @@ import Container from "@/components/ui/Container";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Button from "@/components/ui/Button";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
-import { SERVICE_PAGES, CITY_PAGES, BUSINESS } from "@/lib/constants";
+import { ReviewCards } from "@/components/home/Reviews";
+import { SERVICE_PAGES, CITY_PAGES, BUSINESS, TESTIMONIALS } from "@/lib/constants";
 import { localPagePath } from "@/lib/localPages";
 
 export function generateStaticParams() {
@@ -33,6 +34,8 @@ export function generateMetadata({
 export default function ServicePage({ params }: { params: { service: string } }) {
   const service = SERVICE_PAGES.find((s) => s.slug === params.service);
   if (!service) notFound();
+
+  const serviceReviews = TESTIMONIALS.filter((t) => t.serviceSlug === service.slug);
 
   const faqJsonLd = {
     "@context": "https://schema.org",
@@ -124,6 +127,22 @@ export default function ServicePage({ params }: { params: { service: string } })
           </div>
         </Container>
       </section>
+
+      {/* Only the reviews that describe this service, so a page shows real
+          proof of that job or says nothing at all. */}
+      {serviceReviews.length > 0 && (
+        <section className="bg-paper py-16 sm:py-20">
+          <Container className="max-w-3xl">
+            <SectionHeading
+              eyebrow="Customer Stories"
+              title={`What people say about our ${service.title.toLowerCase()}`}
+              align="center"
+              className="mx-auto"
+            />
+            <ReviewCards reviews={serviceReviews} className="mt-10" />
+          </Container>
+        </section>
+      )}
 
       <section className="bg-navy-50/40 py-16 sm:py-24">
         <Container>
