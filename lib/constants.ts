@@ -586,7 +586,7 @@ export const SERVICE_PAGES: ServicePageContent[] = [
       {
         src: "/photos/yard-waste-tarped-debris.jpg",
         alt: "Tarp pulled back from a load of yard debris — branches, dried leaves, and soil — on a driveway",
-        caption: "Tarped down before it moves. Nothing blows out of our load on the way to the landfill.",
+        caption: "Tarped and ready for the drive to the landfill.",
       },
     ],
     metaTitle: "Yard Waste & Landscaping Debris Removal",
