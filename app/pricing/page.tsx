@@ -5,6 +5,7 @@ import Container from "@/components/ui/Container";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Button from "@/components/ui/Button";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import Reviews from "@/components/home/Reviews";
 import { BUSINESS, SITE_URL } from "@/lib/constants";
 import {
   PUBLISHED_LOAD_SIZES,
@@ -293,6 +294,11 @@ export default function PricingPage() {
           </p>
         </Container>
       </section>
+
+      {/* Social proof sits between the price and the final CTA on purpose —
+          it's the point where someone has just read a number and is deciding
+          whether it's worth it. */}
+      <Reviews />
 
       <section className="bg-white py-16 text-center sm:py-20">
         <Container className="max-w-xl">

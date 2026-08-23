@@ -106,12 +106,47 @@ export const FAQS = [
   },
 ];
 
+/**
+ * Real Google reviews, reproduced verbatim — typos and all, because that's what
+ * makes them read as real. Nothing goes in this array that a customer didn't
+ * actually write.
+ *
+ * `location` is optional on purpose: a reviewer's city usually isn't public, and
+ * a guessed one is a fabricated detail attached to a named person.
+ */
 export const TESTIMONIALS: Array<{
   name: string;
-  location: string;
+  location?: string;
   quote: string;
   rating: number;
-}> = [];
+}> = [
+  {
+    name: "Kevin Shea",
+    quote:
+      "Stone and Mason from Boise Basin Junk Removal were OUTSTANDING! I was clearing a planter by myself in the July heat and needed help. I got in touch with Stone and he was very helpful and understanding. Stone and Mason showed up later that same day and worked late. They worked hard and with minimal guidance needed. They are pleasant, friendly, and competent. They came back the next morning to help finish the job and to haul all the debris to the landfill. I was very pleased with their service and will definitely be using them again!",
+    rating: 5,
+  },
+  {
+    name: "Jason Morales",
+    quote:
+      "Great company. Showed up when they said and finished job when they said. When they were done it was like they were not even here. I would definitely recommend this company. They did a great job stuck to the quote and price was fair.",
+    rating: 5,
+  },
+  {
+    name: "Jackson Criner",
+    quote:
+      "These guys did a great job, showed up and showed professionalism through out the process. Loved working with them",
+    rating: 5,
+  },
+  {
+    name: "Kyan Newman",
+    quote: "great guys ! they do it right. strong work ethic - moral compass !",
+    rating: 5,
+  },
+  // Jack Smart's five-star review is deliberately absent: it's a rating with no
+  // written text, so there's nothing to quote. It still counts toward the Google
+  // rating — it just can't be a testimonial card.
+];
 
 export type CityPage = {
   slug: string;

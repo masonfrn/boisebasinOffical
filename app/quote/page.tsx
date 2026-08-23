@@ -3,6 +3,7 @@ import { Phone } from "lucide-react";
 import Container from "@/components/ui/Container";
 import SectionHeading from "@/components/ui/SectionHeading";
 import QuoteForm from "@/components/quote/QuoteForm";
+import { ReviewCards } from "@/components/home/Reviews";
 import { BUSINESS } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -34,6 +35,16 @@ export default function QuotePage() {
               <Phone size={14} /> Call {BUSINESS.phone}
             </a>
           </p>
+
+          {/* Two reviews, no "leave a review" CTA — the point here is to answer
+              "can I trust these people with my address" without handing anyone a
+              reason to leave the form. */}
+          <div className="mt-12 border-t border-navy/10 pt-10">
+            <p className="text-center font-display text-sm font-bold text-navy">
+              What people say after we&rsquo;ve been out
+            </p>
+            <ReviewCards limit={2} className="mt-5" />
+          </div>
         </div>
       </Container>
     </section>
