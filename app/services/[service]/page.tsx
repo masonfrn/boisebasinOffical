@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { CheckCircle2, MapPin, ArrowRight } from "lucide-react";
 import Container from "@/components/ui/Container";
@@ -9,6 +10,7 @@ import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import { ReviewCards } from "@/components/home/Reviews";
 import { SERVICE_PAGES, CITY_PAGES, BUSINESS, TESTIMONIALS } from "@/lib/constants";
 import { localPagePath } from "@/lib/localPages";
+import { cn } from "@/lib/utils";
 
 export function generateStaticParams() {
   return SERVICE_PAGES.map((service) => ({ service: service.slug }));
@@ -94,6 +96,45 @@ export default function ServicePage({ params }: { params: { service: string } })
           </div>
         </Container>
       </section>
+
+      {/* Real photos of this service or nothing — no stock, no borrowing a
+          shot from a different job. */}
+      {service.photos && service.photos.length > 0 && (
+        <section className="bg-paper py-14 sm:py-20">
+          <Container className="max-w-4xl">
+            <SectionHeading
+              eyebrow="On the Job"
+              title={`Recent ${service.title.toLowerCase()}`}
+              align="center"
+              className="mx-auto"
+            />
+            <div
+              className={cn(
+                "mt-10 grid grid-cols-1 gap-6",
+                service.photos.length > 1 && "sm:grid-cols-2"
+              )}
+            >
+              {service.photos.map((photo) => (
+                <figure key={photo.src}>
+                  <div className="overflow-hidden rounded-2xl shadow-card">
+                    <Image
+                      src={photo.src}
+                      alt={photo.alt}
+                      width={1200}
+                      height={1600}
+                      sizes="(min-width: 640px) 50vw, 100vw"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <figcaption className="mt-3 text-sm leading-relaxed text-ink-muted">
+                    {photo.caption}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          </Container>
+        </section>
+      )}
 
       <section className="bg-navy-50/40 py-16 sm:py-24">
         <Container className="max-w-2xl">

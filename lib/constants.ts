@@ -294,6 +294,15 @@ export type ServicePageContent = {
   intro: string;
   process: string[];
   faqs: Array<{ q: string; a: string }>;
+  /**
+   * Real job photos, in `public/photos`. Only set where we actually have one —
+   * a service page shows its own work or no photo section at all, never a
+   * stand-in from a different job.
+   *
+   * `alt` describes the photo for screen readers and for anyone whose images
+   * failed to load; `caption` is the visible line underneath.
+   */
+  photos?: Array<{ src: string; alt: string; caption: string }>;
 };
 
 export const SERVICE_PAGES: ServicePageContent[] = [
@@ -387,6 +396,13 @@ export const SERVICE_PAGES: ServicePageContent[] = [
   {
     slug: "furniture-removal",
     title: "Furniture Removal",
+    photos: [
+      {
+        src: "/photos/furniture-trailer-load.jpg",
+        alt: "Trailer loaded with a wooden dresser and cabinet panels, being covered with a tarp on a residential street",
+        caption: "A dresser and cabinet panels loaded out and strapped down at the curb.",
+      },
+    ],
     metaTitle: "Furniture Removal",
     metaDescription:
       "Couch, mattress, table, and furniture removal across the Treasure Valley. We carry it out, you don't lift a thing. Free upfront quotes.",
@@ -561,6 +577,18 @@ export const SERVICE_PAGES: ServicePageContent[] = [
   {
     slug: "yard-waste-removal",
     title: "Yard Waste Removal",
+    photos: [
+      {
+        src: "/photos/yard-waste-truck-load.jpg",
+        alt: "Pickup truck with the tailgate down, bed loaded with branches, brush, and torn-out board from a Treasure Valley yard clearing",
+        caption: "Branches, brush, and torn-out board loaded straight from the driveway.",
+      },
+      {
+        src: "/photos/yard-waste-tarped-debris.jpg",
+        alt: "Tarp pulled back from a load of yard debris — branches, dried leaves, and soil — on a driveway",
+        caption: "Tarped down before it moves. Nothing blows out of our load on the way to the landfill.",
+      },
+    ],
     metaTitle: "Yard Waste & Landscaping Debris Removal",
     metaDescription:
       "Branches, brush, sod, old fencing, and landscaping debris hauled across the Treasure Valley. More than your green bin holds, gone in one trip.",

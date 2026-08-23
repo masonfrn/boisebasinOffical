@@ -5,3 +5,9 @@ out
 .DS_Store
 *.tsbuildinfo
 next-env.d.ts
+
+# Camera originals dropped into public/photos. Browsers can't render HEIC and
+# anything under public/ gets deployed, so only the converted JPEGs ship. The
+# originals stay on disk untouched.
+public/photos/*.HEIC
+public/photos/*.heic
