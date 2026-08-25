@@ -6,6 +6,14 @@ export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
     "Learn how Boise Basin Junk Removal collects, uses, and protects your personal information.",
+  // Required, not optional. Next.js inherits alternates.canonical from the root
+  // layout when a page doesn't set one, and the root layout's is "/" — so
+  // omitting this made /privacy-policy serve a canonical pointing at the
+  // homepage, which tells Google the two pages are the same page. Every other
+  // route here sets its own canonical; this one was the gap.
+  alternates: {
+    canonical: "/privacy-policy",
+  },
 };
 
 export default function PrivacyPolicyPage() {
