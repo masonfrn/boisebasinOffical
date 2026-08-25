@@ -10,7 +10,7 @@
         "-y",
         "chrome-devtools-mcp@latest",
         "--userDataDir",
-        "C:/Users/mason/.claude-browser",
+        "C:/Users/mason/.cache/chrome-devtools-mcp/chrome-profile",
         "--viewport",
         "1440x900",
         "--screenshotFormat",
