@@ -6,6 +6,14 @@ out
 *.tsbuildinfo
 next-env.d.ts
 
+# Google service-account keys. This repo is public, and a committed key is a
+# live credential the moment it's pushed — revoking it is the only fix. The key
+# is meant to live outside the repo entirely (see scripts/gsc.mjs); these
+# patterns are a second net in case one ever gets saved in here by accident.
+*service-account*.json
+gsc-key*.json
+.gsc/
+
 # Camera originals dropped into public/photos. Browsers can't render HEIC and
 # anything under public/ gets deployed, so only the converted JPEGs ship. The
 # originals stay on disk untouched.
