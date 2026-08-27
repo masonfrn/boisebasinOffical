@@ -17,12 +17,25 @@ comfortably.
 
 ## Branches
 
-- `main` — production. Vercel auto-deploys it. What customers see.
-- `V3BBoffical` — current working branch. **New work lands here first.**
+- `main` — production, and the working branch. Vercel auto-deploys every push.
+- `V3BBoffical` — retired 2026-08-27, fully merged into `main`.
 - `V2BBOfficial` — older fallback, leave alone.
 
-Work on `V3BBoffical` unless told otherwise, and don't merge to `main` or push
-without being asked.
+**Work directly on `main`.** Mason asked for this on 2026-08-27: the V3 staging
+branch meant finished work sat around invisible to him, and the reason he wants
+things committed is so he can see the change live on the real site. Committing
+and pushing to `main` is expected here — this is not the "ask before pushing"
+situation it would be on most production repos.
+
+The tradeoff is that no staging buffer is left, so `main` is the only thing
+between an edit and a customer reading it:
+
+- Run `npm run build` before every push. It is the only gate remaining.
+- A push is live in about a minute. Copy, prices, and service claims are worth
+  a second read *before* committing, not after.
+- Still confirm before pushing changes to what customers actually read — prices,
+  service claims, contact details. Routine work (docs, refactors, build fixes)
+  does not need a check-in.
 
 ## Content integrity — the rules that matter most
 
