@@ -33,6 +33,14 @@ type QuotePayload = {
   photoNames?: string[];
   photoUrls?: string[];
   estimate?: Estimate | null;
+  /**
+   * Which of the two posts this is. The form delivers the lead the moment the
+   * contact details are in ("lead"), then posts again with the price once the
+   * estimator finishes ("estimate"), so a customer who closes the tab during
+   * the analyzing screen is still a lead we can call. Both carry the same
+   * identifying fields; the Zap matches them on phone_e164.
+   */
+  stage?: string;
   pageUrl?: string;
 };
 
@@ -101,6 +109,9 @@ export async function POST(request: Request) {
     postal_code: zip,
     full_address: [street, city, zip && `ID ${zip}`].filter(Boolean).join(", "),
     items: items.join(", "),
+    // The "How much junk?" question was retired from the form — photos and the
+    // item list size the load now. The key still ships (blank) so the existing
+    // field mapping in the Zap doesn't break on a missing property.
     load_size: str(body.loadSize),
     preferred_date: str(body.preferredDate),
     notes: str(body.notes),
@@ -120,6 +131,11 @@ export async function POST(request: Request) {
     estimate_access_notes: estimate?.accessNotes ?? "",
     cannot_haul: (estimate?.cannotHaul ?? []).join(", "),
     source: "Website — Instant Quote Form",
+    // "lead" is the first post and always carries the contact details; the
+    // "estimate_update" that follows repeats them with the price attached.
+    // A Zap that ignores this field entirely still works — it just processes
+    // the same contact twice, second one winning.
+    submission_type: str(body.stage) === "estimate" ? "estimate_update" : "lead",
     page_url: str(body.pageUrl),
     submitted_at: new Date().toISOString(),
   };
@@ -130,7 +146,15 @@ export async function POST(request: Request) {
   // contact details in the runtime logs — an acceptable trade against losing
   // paying work, but it's why the logs shouldn't be shared around.
   function recordUndelivered(reason: string) {
-    console.error(`UNDELIVERED LEAD (${reason}) — recover manually:`, JSON.stringify(payload));
+    // Labelled by stage on purpose. A failed estimate_update means the contact
+    // is already in GHL and only the price is missing — logging that as an
+    // undelivered lead would send someone re-entering a customer who is
+    // already there.
+    const label =
+      payload.submission_type === "estimate_update"
+        ? "UNDELIVERED ESTIMATE (lead itself already sent)"
+        : "UNDELIVERED LEAD";
+    console.error(`${label} (${reason}) — recover manually:`, JSON.stringify(payload));
   }
 
   if (!WEBHOOK_URL) {

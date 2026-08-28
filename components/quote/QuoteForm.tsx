@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AlertTriangle,
@@ -16,10 +16,15 @@ import {
   X,
 } from "lucide-react";
 import { trackLead } from "@/lib/analytics";
-import { ITEM_TYPES, LOAD_SIZES } from "@/lib/constants";
+import { ITEM_TYPES } from "@/lib/constants";
 import { CLOUDINARY_CONFIGURED, toEstimateUrl, uploadPhoto } from "@/lib/cloudinary";
 import { previewUrlFor, shrinkForEstimate, type InlinePhoto } from "@/lib/photos";
-import { PRICING_CONFIGURED, formatPriceRange, type PriceRange } from "@/lib/pricing";
+import {
+  PRICING_CONFIGURED,
+  TRUCK_CAPACITY_YARDS,
+  formatPriceRange,
+  type PriceRange,
+} from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import TruckLoadGauge from "./TruckLoadGauge";
 
@@ -47,7 +52,6 @@ type Estimate = {
 
 type FormState = {
   items: string[];
-  loadSize: string;
   photos: Photo[];
   street: string;
   city: string;
@@ -60,20 +64,29 @@ type FormState = {
   notes: string;
 };
 
+/**
+ * The order matters more than it looks. Contact details come last and the price
+ * is only revealed after they're submitted, so the estimate is something the
+ * customer receives rather than something they can browse anonymously. The
+ * old "How much junk?" step is gone: the photos and the item list already size
+ * the load, and asking a customer to guess only gave Claude a number it was
+ * told to treat as a hint anyway.
+ */
 const STEP_TITLES = [
   "What needs to go?",
-  "How much junk?",
+  "When do you need it gone?",
   "Add photos",
   "Where are you located?",
-  "When works best?",
   "Your contact info",
 ];
+
+/** Leaving this step is what kicks off the estimate. */
+const PHOTO_STEP = 2;
 
 const DATE_OPTIONS = ["ASAP", "Today", "Tomorrow", "Specific Date"];
 
 const initialState: FormState = {
   items: [],
-  loadSize: "",
   photos: [],
   street: "",
   city: "",
@@ -90,34 +103,35 @@ const initialState: FormState = {
 // Catch Hook wired into Go High Level. See app/api/quote/route.ts.
 const FORM_ENDPOINT = "/api/quote";
 
-// How long a submit will wait on an estimate that is still running. The clock
-// only covers what's *left* of the request — it starts when the customer
-// reaches the contact step, so most of it has usually elapsed by the time they
-// press the button. If it does run out we send the lead without a price:
-// a late estimate is worth far less than a lost customer.
+// How long the analyzing screen will wait on the estimate. The clock only
+// covers what's *left* of the request — it starts back at the photo step — so
+// by the time anyone reaches this screen most of it has usually elapsed. If it
+// does run out the customer still gets a booked callback, just without a number
+// on screen.
 const ESTIMATE_WAIT_MS = 25_000;
+
+// A floor on the analyzing screen so a fast estimate doesn't flash past. The
+// customer just handed over their phone number; a beat of visible work before
+// the price lands reads as the quote being produced rather than pre-canned.
+const ANALYZING_MIN_MS = 1_200;
 
 export default function QuoteForm() {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormState>(initialState);
-  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  // "form" walks the questions, "analyzing" runs after the lead is safely in
+  // GHL, "quote" is the reveal.
+  const [phase, setPhase] = useState<"form" | "analyzing" | "quote">("form");
+  const [status, setStatus] = useState<"idle" | "submitting" | "error">("idle");
   const [estimate, setEstimate] = useState<Estimate | null>(null);
   const [estimateState, setEstimateState] = useState<"idle" | "loading" | "done" | "failed">(
     "idle"
   );
-  // Set while a submit is parked waiting on the estimate, so the button can say
-  // what it's doing instead of looking hung.
-  const [waitingOnEstimate, setWaitingOnEstimate] = useState(false);
-  // The in-flight estimate request. State alone isn't enough here: handleSubmit
-  // needs the *result*, and reading `estimate` from its closure gives whatever
-  // was there when the click handler was created.
+  // The in-flight estimate request. State alone isn't enough here: the submit
+  // handler needs the *result*, and reading `estimate` from its closure gives
+  // whatever was there when the handler was created.
   const estimatePromiseRef = useRef<Promise<Estimate | null> | null>(null);
 
   const totalSteps = STEP_TITLES.length;
-  const selectedLoad = useMemo(
-    () => LOAD_SIZES.find((l) => l.label === form.loadSize),
-    [form.loadSize]
-  );
   const uploading = form.photos.some((photo) => photo.status === "uploading");
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -137,8 +151,10 @@ export default function QuoteForm() {
     const files = Array.from(e.target.files ?? []).slice(0, 6);
     if (files.length === 0) return;
 
+    // New photos invalidate whatever was estimated from the old ones.
     setEstimateState("idle");
     setEstimate(null);
+    estimatePromiseRef.current = null;
 
     // Show the filenames right away, then settle each photo as it's ready.
     setForm((prev) => ({
@@ -205,7 +221,6 @@ export default function QuoteForm() {
               .map((photo) => photo.inline)
               .filter((photo): photo is InlinePhoto => photo !== null),
             items: form.items,
-            loadSize: form.loadSize,
             notes: form.notes,
           }),
         });
@@ -215,38 +230,43 @@ export default function QuoteForm() {
         setEstimateState("done");
         return data.estimate;
       } catch {
-        // A failed estimate is never fatal — the lead still submits without one.
+        // A failed estimate is never fatal — the lead is already delivered by
+        // the time this matters, and the customer still gets a callback.
         setEstimateState("failed");
         return null;
       }
     })();
 
-    // Handed to handleSubmit so a submit made mid-request waits on this exact
-    // run instead of racing it or kicking off a second one.
+    // Handed to the submit handler so it waits on this exact run instead of
+    // racing it or kicking off a second one.
     estimatePromiseRef.current = pending;
     return pending;
-  }, [form.photos, form.items, form.loadSize, form.notes]);
+  }, [form.photos, form.items, form.notes]);
 
-  // Estimate once the customer reaches the last step, so the wait overlaps with
-  // them filling in their contact details.
+  // Start estimating the moment the photos are behind us, so the analyzing
+  // screen later is usually a formality rather than a real wait. Notes are
+  // typed after this point and so aren't part of what Claude sees — the photos
+  // and the item list are what actually size the load, and re-running the
+  // estimate to fold in a sentence would cost the customer more time than it
+  // would buy in accuracy.
   useEffect(() => {
-    if (step === totalSteps - 1 && estimateState === "idle" && !uploading) {
+    if (phase === "form" && step > PHOTO_STEP && estimateState === "idle" && !uploading) {
       void runEstimate();
     }
-  }, [step, totalSteps, estimateState, uploading, runEstimate]);
+  }, [phase, step, estimateState, uploading, runEstimate]);
 
   const canAdvance = (() => {
     switch (step) {
       case 0:
         return form.items.length > 0;
       case 1:
-        return form.loadSize !== "";
-      case 2:
-        return true;
+        return form.dateOption !== "Specific Date" || form.specificDate !== "";
+      case PHOTO_STEP:
+        // Photos stay optional, but moving on mid-upload would start the
+        // estimate against half the pictures.
+        return !uploading;
       case 3:
         return form.street.trim() !== "" && form.city.trim() !== "" && form.zip.trim() !== "";
-      case 4:
-        return form.dateOption !== "ASAP" ? true : true;
       default:
         return true;
     }
@@ -260,26 +280,53 @@ export default function QuoteForm() {
   }
 
   /**
-   * The estimate as it stands at submit time, waiting on a run that hasn't
-   * finished yet. Returns null when the estimate failed or outran
-   * ESTIMATE_WAIT_MS; the caller sends the lead regardless.
+   * The estimate as it stands, waiting on a run that hasn't finished yet.
+   * Returns null when the estimate failed or outran ESTIMATE_WAIT_MS.
    */
   async function settledEstimate(): Promise<Estimate | null> {
     if (estimateState === "done") return estimate;
     if (estimateState === "failed") return null;
 
-    setWaitingOnEstimate(true);
-    try {
-      // "idle" means the effect below hasn't fired yet — start the request here
-      // rather than submitting with nothing.
-      const pending = estimatePromiseRef.current ?? runEstimate();
-      return await Promise.race([
-        pending,
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), ESTIMATE_WAIT_MS)),
-      ]);
-    } finally {
-      setWaitingOnEstimate(false);
-    }
+    // "idle" means the effect above never fired — start the request here rather
+    // than showing a quote screen with nothing on it.
+    const pending = estimatePromiseRef.current ?? runEstimate();
+    return await Promise.race([
+      pending,
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), ESTIMATE_WAIT_MS)),
+    ]);
+  }
+
+  /**
+   * One post to the Zapier hook. Called twice per quote: once the instant the
+   * contact details are in, and again with the price once Claude has sized the
+   * load. `stage` is what lets the Zap tell the two apart — see the
+   * submission_type note in app/api/quote/route.ts.
+   */
+  async function sendToGhl(estimateForPost: Estimate | null, stage: "lead" | "estimate") {
+    const res = await fetch(FORM_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: form.items,
+        street: form.street,
+        city: form.city,
+        zip: form.zip,
+        preferredDate:
+          form.dateOption === "Specific Date" ? form.specificDate : form.dateOption,
+        name: form.name,
+        phone: form.phone,
+        email: form.email,
+        notes: form.notes,
+        photoNames: form.photos.map((photo) => photo.name),
+        photoUrls: form.photos
+          .map((photo) => photo.url)
+          .filter((url): url is string => url !== null),
+        estimate: estimateForPost,
+        stage,
+        pageUrl: typeof window !== "undefined" ? window.location.href : "",
+      }),
+    });
+    if (!res.ok) throw new Error("Submission failed");
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -287,106 +334,117 @@ export default function QuoteForm() {
     if (!form.name.trim() || !form.phone.trim()) return;
     setStatus("submitting");
 
-    // The estimate is kicked off when the customer reaches this step, and a
-    // vision call takes longer than typing a name and phone number does. The
-    // submit used to read whatever `estimate` happened to hold at click time,
-    // so anyone who typed quickly sent estimate: null and landed in GHL with no
-    // price range at all — the job still came through, just with the number
-    // silently missing. Wait for the run instead of racing it.
-    const finalEstimate = await settledEstimate();
-
+    // Deliver the lead before going anywhere near the estimate. Everything
+    // needed to call this customer back is already typed, and the analyzing
+    // screen that follows is the one place they might close the tab — so the
+    // contact details have to be in GHL before we start waiting on Claude.
+    // This is the only failure here that the customer is shown, because it's
+    // the only one that loses their request.
     try {
-      const res = await fetch(FORM_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: form.items,
-          loadSize: form.loadSize,
-          street: form.street,
-          city: form.city,
-          zip: form.zip,
-          preferredDate:
-            form.dateOption === "Specific Date" ? form.specificDate : form.dateOption,
-          name: form.name,
-          phone: form.phone,
-          email: form.email,
-          notes: form.notes,
-          photoNames: form.photos.map((photo) => photo.name),
-          photoUrls: form.photos
-            .map((photo) => photo.url)
-            .filter((url): url is string => url !== null),
-          estimate: finalEstimate,
-          pageUrl: typeof window !== "undefined" ? window.location.href : "",
-        }),
-      });
-      if (!res.ok) throw new Error("Submission failed");
-      setStatus("success");
-
-      // Fires only once the lead actually reached Zapier, so the Lead count in
-      // Events Manager matches what lands in GHL rather than counting abandoned
-      // attempts. Value comes from the estimator only when it produced one.
-      trackLead({ value: finalEstimate?.price.midpoint, contentName: "Quote Form" });
+      await sendToGhl(null, "lead");
     } catch {
       setStatus("error");
+      return;
     }
+
+    // The lead is captured, so this is the honest conversion moment. The
+    // estimate has usually landed by now (it started back at the photo step)
+    // and its value rides along when it has — but the event fires either way,
+    // since an accurate lead count matters more to ad delivery than the value.
+    trackLead({ value: estimate?.price.midpoint, contentName: "Quote Form" });
+
+    setStatus("idle");
+    setPhase("analyzing");
+
+    const [finalEstimate] = await Promise.all([
+      settledEstimate(),
+      new Promise((resolve) => setTimeout(resolve, ANALYZING_MIN_MS)),
+    ]);
+
+    // Follow-up post carrying the price. A failure here costs the number on the
+    // record, not the lead itself, so it stays silent rather than throwing the
+    // customer an error about something already handled.
+    if (finalEstimate) {
+      void sendToGhl(finalEstimate, "estimate").catch(() => {});
+    }
+
+    setPhase("quote");
   }
 
-  if (status === "success") {
+  function reset() {
+    setForm(initialState);
+    setStep(0);
+    setPhase("form");
+    setStatus("idle");
+    setEstimate(null);
+    setEstimateState("idle");
+    estimatePromiseRef.current = null;
+  }
+
+  if (phase === "analyzing") {
     return (
       <div className="flex flex-col items-center rounded-3xl bg-white p-10 text-center shadow-card">
         <span className="flex h-16 w-16 items-center justify-center rounded-full bg-haul-50 text-haul-500">
-          <PartyPopper size={30} />
+          <Loader2 size={30} className="animate-spin" />
         </span>
-        <h3 className="mt-5 font-display text-2xl font-bold text-navy">Thank you!</h3>
+        <h3 className="mt-5 font-display text-2xl font-bold text-navy">
+          {form.photos.length > 0 ? "Analyzing your photos..." : "Sizing up your load..."}
+        </h3>
+        <p className="mt-2 max-w-sm text-ink-muted">
+          Working out how much space this takes up and what it should cost. This usually
+          takes a few seconds.
+        </p>
+        {/* The request is already in GHL by this point. Say so plainly — a slow
+            estimate otherwise reads as a form that never submitted, and that's
+            when people resubmit or leave. */}
+        <p className="mt-5 flex items-center gap-2 text-sm font-semibold text-ink-soft">
+          <Check size={16} className="text-haul-500" />
+          Your request is in — we already have your details.
+        </p>
+      </div>
+    );
+  }
 
-        {/* The customer saw a number on the previous step and it used to vanish
-            the second they submitted, which reads as the quote being withdrawn.
-            Carry it onto this screen so the figure they were given is still in
-            front of them. Absent when the estimator had nothing to work from —
-            the copy below covers that case instead of showing an empty box. */}
+  if (phase === "quote") {
+    const truckFill = estimate
+      ? Math.round((estimate.cubicYards / TRUCK_CAPACITY_YARDS) * 100)
+      : 0;
+
+    return (
+      <div className="rounded-3xl bg-white p-6 shadow-card sm:p-8">
+        <div className="flex flex-col items-center text-center">
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-haul-50 text-haul-500">
+            <PartyPopper size={30} />
+          </span>
+          <h3 className="mt-5 font-display text-2xl font-bold text-navy">
+            {estimate ? "Here's your estimate" : "Thank you!"}
+          </h3>
+          <p className="mt-2 max-w-sm text-ink-muted">
+            {estimate
+              ? "We'll call to confirm and get you on the schedule."
+              : "We couldn't size this one automatically, so we'll price it on the call. We have your details and we'll be in touch shortly."}
+          </p>
+        </div>
+
         {estimate && (
-          <div className="mt-5 w-full max-w-xs rounded-2xl border-2 border-haul-200 bg-haul-50/60 p-4">
-            <div className="flex items-center justify-center gap-2">
-              <Sparkles size={15} className="text-haul-500" />
-              <span className="font-display text-xs font-bold uppercase tracking-[0.14em] text-haul-600">
-                {estimate.confidence === "low" ? "Rough estimate" : "Your estimate"}
-              </span>
+          <>
+            <div className="mt-6 flex justify-center">
+              <TruckLoadGauge fill={truckFill} label={`${estimate.cubicYards} yd³`} />
             </div>
-            {PRICING_CONFIGURED ? (
-              <>
-                <p className="mt-2 font-display text-3xl font-bold text-navy">
-                  {formatPriceRange(estimate.price)}
-                </p>
-                <p className="mt-1 text-xs text-ink-muted">
-                  About {estimate.cubicYards} cubic yards. Final price is confirmed on site
-                  before we load anything.
-                </p>
-              </>
-            ) : (
-              <p className="mt-2 font-display text-2xl font-bold text-navy">
-                About {estimate.cubicYards} cubic yards
-              </p>
-            )}
-          </div>
+            <div className="mt-6">
+              <EstimatePanel state="done" estimate={estimate} />
+            </div>
+          </>
         )}
 
-        <p className="mt-4 max-w-sm text-ink-muted">
-          {estimate
-            ? "We'll call to confirm this quote and book your pickup. If it's urgent, feel free to call or text us directly."
-            : "We'll contact you shortly with your estimate. If it's urgent, feel free to call or text us directly."}
-        </p>
-        <button
-          onClick={() => {
-            setForm(initialState);
-            setStep(0);
-            setStatus("idle");
-            setEstimate(null);
-            setEstimateState("idle");
-          }}
-          className="mt-6 font-display text-sm font-semibold text-haul-500 hover:text-haul-600"
-        >
-          Submit another request
-        </button>
+        <div className="mt-7 text-center">
+          <button
+            onClick={reset}
+            className="font-display text-sm font-semibold text-haul-500 hover:text-haul-600"
+          >
+            Submit another request
+          </button>
+        </div>
       </div>
     );
   }
@@ -450,34 +508,45 @@ export default function QuoteForm() {
 
             {step === 1 && (
               <div className="mt-5">
-                <div className="mb-6 flex justify-center">
-                  <TruckLoadGauge fill={selectedLoad?.fill ?? 0} label={form.loadSize || undefined} />
-                </div>
-                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-                  {LOAD_SIZES.map((size) => {
-                    const active = form.loadSize === size.label;
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                  {DATE_OPTIONS.map((opt) => {
+                    const active = form.dateOption === opt;
                     return (
                       <button
                         type="button"
-                        key={size.label}
-                        onClick={() => update("loadSize", size.label)}
+                        key={opt}
+                        onClick={() => update("dateOption", opt)}
                         aria-pressed={active}
                         className={cn(
-                          "rounded-xl border-2 px-3.5 py-3 text-left text-sm font-semibold transition-colors",
+                          "rounded-xl border-2 px-3.5 py-3 text-sm font-semibold transition-colors",
                           active
                             ? "border-basin-500 bg-basin-50 text-basin-600"
                             : "border-navy/10 text-ink-soft hover:border-haul-300"
                         )}
                       >
-                        {size.label}
+                        {opt}
                       </button>
                     );
                   })}
                 </div>
+                {form.dateOption === "Specific Date" && (
+                  <div className="mt-4">
+                    <Field label="Pick a date" htmlFor="specificDate">
+                      <input
+                        id="specificDate"
+                        type="date"
+                        value={form.specificDate}
+                        onChange={(e) => update("specificDate", e.target.value)}
+                        className={inputClass}
+                        min={new Date().toISOString().split("T")[0]}
+                      />
+                    </Field>
+                  </div>
+                )}
               </div>
             )}
 
-            {step === 2 && (
+            {step === PHOTO_STEP && (
               <div className="mt-5">
                 <label
                   htmlFor="photo-upload"
@@ -576,48 +645,10 @@ export default function QuoteForm() {
             )}
 
             {step === 4 && (
-              <div className="mt-5">
-                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                  {DATE_OPTIONS.map((opt) => {
-                    const active = form.dateOption === opt;
-                    return (
-                      <button
-                        type="button"
-                        key={opt}
-                        onClick={() => update("dateOption", opt)}
-                        aria-pressed={active}
-                        className={cn(
-                          "rounded-xl border-2 px-3.5 py-3 text-sm font-semibold transition-colors",
-                          active
-                            ? "border-basin-500 bg-basin-50 text-basin-600"
-                            : "border-navy/10 text-ink-soft hover:border-haul-300"
-                        )}
-                      >
-                        {opt}
-                      </button>
-                    );
-                  })}
-                </div>
-                {form.dateOption === "Specific Date" && (
-                  <div className="mt-4">
-                    <Field label="Pick a date" htmlFor="specificDate">
-                      <input
-                        id="specificDate"
-                        type="date"
-                        value={form.specificDate}
-                        onChange={(e) => update("specificDate", e.target.value)}
-                        className={inputClass}
-                        min={new Date().toISOString().split("T")[0]}
-                      />
-                    </Field>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {step === 5 && (
               <div className="mt-5 space-y-4">
-                <EstimatePanel state={estimateState} estimate={estimate} />
+                {/* No estimate panel here on purpose. The price is the thing the
+                    customer came for, so it lands on the quote screen after
+                    these details are submitted rather than beside them. */}
                 <Field label="Full Name" htmlFor="name" required>
                   <input
                     id="name"
@@ -693,7 +724,8 @@ export default function QuoteForm() {
               disabled={!canAdvance}
               className="flex items-center gap-1.5 rounded-full bg-navy px-6 py-3 font-display text-sm font-bold text-white shadow-card transition-all hover:bg-navy-500 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Continue <ArrowRight size={16} />
+              {uploading && step === PHOTO_STEP ? "Uploading..." : "Continue"}
+              <ArrowRight size={16} />
             </button>
           ) : (
             <button
@@ -703,13 +735,10 @@ export default function QuoteForm() {
             >
               {status === "submitting" ? (
                 <>
-                  <Loader2 size={18} className="animate-spin" />{" "}
-                  {/* The pause here is the estimate finishing, not the lead
-                      being slow to send. Say so, or it just looks stuck. */}
-                  {waitingOnEstimate ? "Finishing your estimate..." : "Sending..."}
+                  <Loader2 size={18} className="animate-spin" /> Sending...
                 </>
               ) : (
-                "Get My Free Quote"
+                "See My Price"
               )}
             </button>
           )}

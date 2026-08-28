@@ -3,9 +3,15 @@
 export default function TruckLoadGauge({
   fill,
   label,
+  // Used to read "selected", from back when the customer picked their own load
+  // size. That question is gone and the only caller now is the quote screen,
+  // where the number came from Claude reading the photos — so the caller says
+  // where it came from rather than the gauge assuming.
+  caption = "estimated",
 }: {
   fill: number;
   label?: string;
+  caption?: string;
 }) {
   const clamped = Math.max(4, Math.min(100, fill));
 
@@ -61,7 +67,7 @@ export default function TruckLoadGauge({
       </svg>
       {label && (
         <p className="mt-2 font-display text-sm font-bold text-navy">
-          {label} <span className="text-ink-muted font-normal">selected</span>
+          {label} <span className="text-ink-muted font-normal">{caption}</span>
         </p>
       )}
     </div>
