@@ -65,7 +65,18 @@ export default function Navbar() {
           : "bg-white/80 backdrop-blur"
       )}
     >
-      <Container>
+      {/* The header sets its own width rather than using <Container>. Eight nav
+          items plus the logo, phone number, and CTA need about 1185px, but
+          Container caps at max-w-6xl — 1088px of usable width — so the row was
+          crushed at *every* desktop size, not just narrow windows: the three
+          groups ended up flush against each other and labels wrapped mid-word.
+          Overriding the cap by passing a class is not an option: cn() is a
+          plain join with no tailwind-merge, so the winner would come down to
+          Tailwind's output order. Widening alone is not enough either — below
+          ~1280px the viewport becomes the binding limit instead of the cap,
+          which is why the desktop row now starts at xl: and the 1024–1280px
+          range gets the hamburger it used to skip. */}
+      <div className="mx-auto w-full max-w-7xl px-5 sm:px-8">
         <div className="flex h-[72px] items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 shrink-0">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-navy text-white">
@@ -83,7 +94,7 @@ export default function Navbar() {
 
           {/* gap-5, not gap-6: the Pricing tab took the desktop row to eight
               items, which overran the logo and phone number at exactly 1024px. */}
-          <nav className="hidden items-center gap-5 lg:flex">
+          <nav className="hidden items-center gap-5 xl:flex">
             {NAV_LINKS.map((link) => {
               const active = isSectionActive(link, pathname);
 
@@ -125,7 +136,7 @@ export default function Navbar() {
                       )
                     }
                     className={cn(
-                      "flex items-center gap-1 font-display text-sm font-semibold text-ink-soft transition-colors hover:text-basin-500",
+                      "flex items-center gap-1 whitespace-nowrap font-display text-sm font-semibold text-ink-soft transition-colors hover:text-basin-500",
                       (active || expanded) && "text-basin-500"
                     )}
                   >
@@ -195,10 +206,10 @@ export default function Navbar() {
             })}
           </nav>
 
-          <div className="hidden items-center gap-3 lg:flex">
+          <div className="hidden items-center gap-3 xl:flex">
             <a
               href={BUSINESS.phoneHref}
-              className="flex items-center gap-2 font-display text-sm font-bold text-navy hover:text-haul-500"
+              className="flex items-center gap-2 whitespace-nowrap font-display text-sm font-bold text-navy hover:text-haul-500"
             >
               <Phone size={16} /> {BUSINESS.phone}
             </a>
@@ -211,16 +222,16 @@ export default function Navbar() {
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-navy lg:hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-navy xl:hidden"
           >
             {open ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
-      </Container>
+      </div>
 
       <div
         className={cn(
-          "bg-white shadow-lg transition-[max-height] duration-300 ease-in-out lg:hidden",
+          "bg-white shadow-lg transition-[max-height] duration-300 ease-in-out xl:hidden",
           // Expanded sections can run past the old fixed height, so the sheet
           // is capped at the viewport and scrolls instead of clipping items.
           open
