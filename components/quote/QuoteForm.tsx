@@ -15,6 +15,7 @@ import {
   User,
   X,
 } from "lucide-react";
+import { trackLead } from "@/lib/analytics";
 import { ITEM_TYPES, LOAD_SIZES } from "@/lib/constants";
 import { CLOUDINARY_CONFIGURED, toEstimateUrl, uploadPhoto } from "@/lib/cloudinary";
 import { previewUrlFor, shrinkForEstimate, type InlinePhoto } from "@/lib/photos";
@@ -266,6 +267,11 @@ export default function QuoteForm() {
       });
       if (!res.ok) throw new Error("Submission failed");
       setStatus("success");
+
+      // Fires only once the lead actually reached Zapier, so the Lead count in
+      // Events Manager matches what lands in GHL rather than counting abandoned
+      // attempts. Value comes from the estimator only when it produced one.
+      trackLead({ value: estimate?.price.midpoint, contentName: "Quote Form" });
     } catch {
       setStatus("error");
     }
