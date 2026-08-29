@@ -347,12 +347,6 @@ export default function QuoteForm() {
       return;
     }
 
-    // The lead is captured, so this is the honest conversion moment. The
-    // estimate has usually landed by now (it started back at the photo step)
-    // and its value rides along when it has — but the event fires either way,
-    // since an accurate lead count matters more to ad delivery than the value.
-    trackLead({ value: estimate?.price.midpoint, contentName: "Quote Form" });
-
     setStatus("idle");
     setPhase("analyzing");
 
@@ -367,6 +361,16 @@ export default function QuoteForm() {
     if (finalEstimate) {
       void sendToGhl(finalEstimate, "estimate").catch(() => {});
     }
+
+    // The conversion Meta gets told about is the generated quote, not the
+    // submit click. The lead post above has already succeeded by this point, so
+    // the event still can't fire for a request that never reached GHL — but
+    // firing here means the value on the event is the price the customer was
+    // actually shown. The event fires even when the estimate came back null
+    // (failed or slower than ESTIMATE_WAIT_MS): the customer still reaches the
+    // quote screen and is still a real lead, so dropping it would undercount
+    // conversions. It just goes without a value rather than a guessed one.
+    trackLead({ value: finalEstimate?.price.midpoint, contentName: "Quote Form" });
 
     setPhase("quote");
   }
