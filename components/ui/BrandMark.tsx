@@ -14,6 +14,15 @@
  * two-tone — the navy and the orange have to be set independently so the
  * same component can go on a white header and a navy footer. Defaults are
  * the brand navy and basin orange from tailwind.config.ts.
+ *
+ * Careful when editing the JSX below: lib/ogImage.tsx renders this component
+ * through Satori on the edge runtime, which supports far less than React
+ * does. A JSX fragment here throws "Cannot convert a Symbol value to a
+ * string" and takes down /opengraph-image and /twitter-image — and
+ * `npm run build` does not catch it, because the failure happens when those
+ * routes render, not when they compile. After changing this file, request
+ * both routes against a production build (`npm run build && npx next start`,
+ * then curl them) rather than trusting a green build.
  */
 export default function BrandMark({
   width = 160,
