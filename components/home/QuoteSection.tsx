@@ -9,7 +9,7 @@ export default function QuoteSection() {
         <SectionHeading
           eyebrow="Get Started"
           title="Get Your Instant Quote"
-          subtitle="Tell us what you need removed and we'll get back to you fast with an upfront price — no pushy sales calls."
+          subtitle="Snap a few photos and see your price on this page in minutes — no waiting on a callback to find out what it costs. We'll reach out to confirm the details, and there's no obligation to book."
           align="center"
           className="mx-auto"
         />

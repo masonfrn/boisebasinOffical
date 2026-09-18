@@ -23,7 +23,7 @@ export default function QuotePage() {
           as="h1"
           eyebrow="Free & Fast"
           title="Get Your Instant Quote"
-          subtitle="Answer a few quick questions and we'll follow up with an upfront price — usually within minutes during business hours."
+          subtitle="Snap a few photos and see your price on this page in minutes — no waiting on a callback to find out what it costs. We'll reach out to confirm the details, and there's no obligation to book."
           align="center"
           className="mx-auto"
         />
