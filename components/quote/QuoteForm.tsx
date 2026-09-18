@@ -8,6 +8,7 @@ import {
   ArrowRight,
   Camera,
   Check,
+  ChevronDown,
   Loader2,
   MapPin,
   PartyPopper,
@@ -16,7 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { trackLead } from "@/lib/analytics";
-import { ITEM_TYPES } from "@/lib/constants";
+import { ITEM_TYPES, SERVICE_AREAS } from "@/lib/constants";
 import { CLOUDINARY_CONFIGURED, toEstimateUrl, uploadPhoto } from "@/lib/cloudinary";
 import { previewUrlFor, shrinkForEstimate, type InlinePhoto } from "@/lib/photos";
 import {
@@ -53,14 +54,11 @@ type Estimate = {
 type FormState = {
   items: string[];
   photos: Photo[];
-  street: string;
   city: string;
-  zip: string;
   dateOption: string;
   specificDate: string;
   name: string;
   phone: string;
-  email: string;
   notes: string;
 };
 
@@ -85,17 +83,21 @@ const PHOTO_STEP = 2;
 
 const DATE_OPTIONS = ["ASAP", "Today", "Tomorrow", "Specific Date"];
 
+/**
+ * Escape hatch on the city dropdown. Goes to GHL as-is so a dispatcher reading
+ * the lead can tell "they picked somewhere we don't list" apart from "they
+ * picked Boise" — the two want different first questions on the call.
+ */
+const OTHER_CITY = "Somewhere else in the Valley";
+
 const initialState: FormState = {
   items: [],
   photos: [],
-  street: "",
   city: "",
-  zip: "",
   dateOption: "ASAP",
   specificDate: "",
   name: "",
   phone: "",
-  email: "",
   notes: "",
 };
 
@@ -266,7 +268,7 @@ export default function QuoteForm() {
         // estimate against half the pictures.
         return !uploading;
       case 3:
-        return form.street.trim() !== "" && form.city.trim() !== "" && form.zip.trim() !== "";
+        return form.city !== "";
       default:
         return true;
     }
@@ -308,14 +310,11 @@ export default function QuoteForm() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         items: form.items,
-        street: form.street,
         city: form.city,
-        zip: form.zip,
         preferredDate:
           form.dateOption === "Specific Date" ? form.specificDate : form.dateOption,
         name: form.name,
         phone: form.phone,
-        email: form.email,
         notes: form.notes,
         photoNames: form.photos.map((photo) => photo.name),
         photoUrls: form.photos
@@ -609,41 +608,45 @@ export default function QuoteForm() {
 
             {step === 3 && (
               <div className="mt-5 space-y-4">
-                <Field label="Street Address" htmlFor="street">
-                  <input
-                    id="street"
-                    value={form.street}
-                    onChange={(e) => update("street", e.target.value)}
-                    placeholder="123 Main St"
-                    className={inputClass}
-                    autoComplete="street-address"
-                  />
-                </Field>
-                <div className="grid grid-cols-2 gap-4">
-                  <Field label="City" htmlFor="city">
-                    <input
+                {/* City only — no street address. Asking a stranger for their
+                    home address before they've been given anything is the
+                    single biggest drop-off in this form, and it buys nothing
+                    the estimate needs: the price comes from the photos and the
+                    item list, not the location. The crew gets the exact address
+                    on the confirmation call, by which point the customer has
+                    seen their price and has a reason to hand it over. */}
+                <Field label="City" htmlFor="city" required>
+                  <div className="relative">
+                    <select
                       id="city"
                       value={form.city}
                       onChange={(e) => update("city", e.target.value)}
-                      placeholder="Boise"
-                      className={inputClass}
+                      className={cn(inputClass, "appearance-none pr-10", !form.city && "text-ink-muted/60")}
                       autoComplete="address-level2"
+                      required
+                    >
+                      <option value="">Select your city</option>
+                      {SERVICE_AREAS.map((area) => (
+                        <option key={area} value={area}>
+                          {area}
+                        </option>
+                      ))}
+                      {/* The eight named cities are where we actually work, but
+                          the valley has plenty of smaller towns and unincorporated
+                          pockets. Forcing one of those customers to pick a city
+                          they're not in would put a wrong address on the job. */}
+                      <option value={OTHER_CITY}>{OTHER_CITY}</option>
+                    </select>
+                    <ChevronDown
+                      size={18}
+                      aria-hidden
+                      className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-muted"
                     />
-                  </Field>
-                  <Field label="ZIP Code" htmlFor="zip">
-                    <input
-                      id="zip"
-                      value={form.zip}
-                      onChange={(e) => update("zip", e.target.value)}
-                      placeholder="83702"
-                      className={inputClass}
-                      inputMode="numeric"
-                      autoComplete="postal-code"
-                    />
-                  </Field>
-                </div>
+                  </div>
+                </Field>
                 <div className="flex items-center gap-2 text-xs text-ink-muted">
-                  <MapPin size={14} /> We serve the entire Treasure Valley
+                  <MapPin size={14} /> We serve the entire Treasure Valley — we&apos;ll get
+                  your exact address when we confirm the job.
                 </div>
               </div>
             )}
@@ -664,31 +667,21 @@ export default function QuoteForm() {
                     required
                   />
                 </Field>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field label="Phone" htmlFor="phone" required>
-                    <input
-                      id="phone"
-                      type="tel"
-                      value={form.phone}
-                      onChange={(e) => update("phone", e.target.value)}
-                      placeholder="(208) 555-0123"
-                      className={inputClass}
-                      autoComplete="tel"
-                      required
-                    />
-                  </Field>
-                  <Field label="Email" htmlFor="email">
-                    <input
-                      id="email"
-                      type="email"
-                      value={form.email}
-                      onChange={(e) => update("email", e.target.value)}
-                      placeholder="jane@email.com"
-                      className={inputClass}
-                      autoComplete="email"
-                    />
-                  </Field>
-                </div>
+                {/* Phone only, full width. Email was asked for here and never
+                    used — the crew calls or texts to confirm, so a second
+                    contact field was one more thing to type for nothing. */}
+                <Field label="Phone" htmlFor="phone" required>
+                  <input
+                    id="phone"
+                    type="tel"
+                    value={form.phone}
+                    onChange={(e) => update("phone", e.target.value)}
+                    placeholder="(208) 555-0123"
+                    className={inputClass}
+                    autoComplete="tel"
+                    required
+                  />
+                </Field>
                 <Field label="Additional Notes" htmlFor="notes">
                   <textarea
                     id="notes"

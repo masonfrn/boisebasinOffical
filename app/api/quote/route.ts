@@ -22,13 +22,10 @@ type Estimate = {
 type QuotePayload = {
   items?: string[];
   loadSize?: string;
-  street?: string;
   city?: string;
-  zip?: string;
   preferredDate?: string;
   name?: string;
   phone?: string;
-  email?: string;
   notes?: string;
   photoNames?: string[];
   photoUrls?: string[];
@@ -87,9 +84,7 @@ export async function POST(request: Request) {
   }
 
   const { firstName, lastName } = splitName(name);
-  const street = str(body.street);
   const city = str(body.city);
-  const zip = str(body.zip);
   const items = list(body.items);
   const photoNames = list(body.photoNames);
   const photoUrls = list(body.photoUrls);
@@ -102,12 +97,19 @@ export async function POST(request: Request) {
     last_name: lastName,
     phone,
     phone_e164: toE164(phone),
-    email: str(body.email),
-    address: street,
+    // The form no longer asks for an email — the crew confirms by phone. The
+    // key still ships (blank) so the existing GHL field mapping in the Zap
+    // doesn't break on a missing property.
+    email: "",
+    // The form asks for a city, not a street address — see the note on step 3
+    // in QuoteForm.tsx. `address` and `postal_code` still ship (blank) so the
+    // existing GHL field mapping in the Zap doesn't break on a missing
+    // property, and so the crew can fill them in from the confirmation call.
+    address: "",
     city,
     state: "ID",
-    postal_code: zip,
-    full_address: [street, city, zip && `ID ${zip}`].filter(Boolean).join(", "),
+    postal_code: "",
+    full_address: [city, city && "ID"].filter(Boolean).join(", "),
     items: items.join(", "),
     // The "How much junk?" question was retired from the form — photos and the
     // item list size the load now. The key still ships (blank) so the existing
