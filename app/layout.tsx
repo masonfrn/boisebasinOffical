@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Space_Grotesk, Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
@@ -6,6 +7,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import StickyCallBar from "@/components/layout/StickyCallBar";
 import FloatingQuoteButton from "@/components/layout/FloatingQuoteButton";
+import ContentsquarePageviews from "@/components/layout/ContentsquarePageviews";
 import { BUSINESS, BUSINESS_HOURS, SITE_URL } from "@/lib/constants";
 
 const displayFont = Space_Grotesk({
@@ -172,6 +174,45 @@ export default function RootLayout({
             alt=""
           />
         </noscript>
+        {/*
+          Contentsquare — session replay and heatmaps, used to watch how people
+          actually move through the quote form.
+
+          The tag ID is public by design (it ships in the page source of every
+          site running Contentsquare), so it is not a secret and is fine in a
+          public repo. This is the vendor's standard snippet; the `setPath` vs
+          `trackPageview` branch is theirs, and handles the case where the tag
+          was somehow already loaded.
+        */}
+        <Script
+          id="contentsquare"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function () {
+                window._uxa = window._uxa || [];
+                if (typeof CS_CONF === 'undefined') {
+                  window._uxa.push(['setPath', window.location.pathname + window.location.hash.replace('#', '?__')]);
+                  var mt = document.createElement('script');
+                  mt.type = 'text/javascript';
+                  mt.async = true;
+                  mt.src = 'https://t.contentsquare.net/uxa/6641626c5ddea.js';
+                  document.getElementsByTagName('head')[0].appendChild(mt);
+                } else {
+                  window._uxa.push(['trackPageview', window.location.pathname + window.location.hash.replace('#', '?__')]);
+                }
+              })();
+            `,
+          }}
+        />
+        {/*
+          Next.js navigations don't reload the document, so the snippet above
+          only ever counts the first page. This reports the rest.
+          useSearchParams needs a Suspense boundary or the static build fails.
+        */}
+        <Suspense fallback={null}>
+          <ContentsquarePageviews />
+        </Suspense>
         <Navbar />
         <main className="pb-16 lg:pb-0">{children}</main>
         <Footer />
