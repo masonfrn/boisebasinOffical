@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Phone, Mail, MapPin, Facebook, Star, Truck } from "lucide-react";
+import { Phone, Mail, MapPin, Facebook, Star } from "lucide-react";
 import Container from "@/components/ui/Container";
+import BrandMark from "@/components/ui/BrandMark";
 import { BUSINESS, NAV_LINKS, SERVICE_AREAS, CITY_PAGES } from "@/lib/constants";
 
 export default function Footer() {
@@ -10,16 +11,12 @@ export default function Footer() {
     <footer className="bg-navy text-white">
       <Container className="grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <Link href="/" className="flex items-center gap-2.5">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-basin-500 text-white">
-              <Truck size={20} strokeWidth={2.25} />
-            </span>
-            <span className="font-display leading-tight">
-              <span className="block text-base font-bold">Boise Basin</span>
-              <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-basin-300">
-                Junk Removal
-              </span>
-            </span>
+          <Link href="/" className="inline-block" aria-label="Boise Basin Junk Removal — home">
+            {/* Same lockup as the header, but the navy half is redrawn white:
+                this sits on the navy footer, where the logo's own navy would
+                disappear. The orange "JUNK REMOVAL" carries over unchanged —
+                it has enough contrast on navy on its own. */}
+            <BrandMark width={130} markColor="#FFFFFF" />
           </Link>
           <p className="mt-4 text-sm leading-relaxed text-white/60">
             Fast, upfront junk removal for the Treasure Valley. Licensed,

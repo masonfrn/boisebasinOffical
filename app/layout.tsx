@@ -77,6 +77,11 @@ export default function RootLayout({
     "@type": "LocalBusiness",
     name: BUSINESS.name,
     image: `${siteUrl}/opengraph-image`,
+    // Google reads `logo` (not `image`) when deciding what mark to show beside
+    // the site in search results and the Knowledge Panel. Points at the same
+    // badge as app/icon.svg so search, the browser tab, Facebook, and the
+    // Google Business profile all show one logo.
+    logo: `${siteUrl}/icon.svg`,
     telephone: BUSINESS.phone,
     email: BUSINESS.email,
     url: siteUrl,

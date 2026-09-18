@@ -3,12 +3,17 @@
 @tailwind utilities;
 
 :root {
-  --header-height: 72px;
+  /* Matches the sticky header row in Navbar.tsx. It grew from 72px when the
+     logo became the real stacked lockup; anything offsetting the header
+     should read this rather than hardcoding a number again. */
+  --header-height: 80px;
 }
 
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: 90px;
+  /* Header height plus a little breathing room, so an anchored heading lands
+     below the sticky header instead of under it. */
+  scroll-padding-top: 98px;
 }
 
 body {

@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Phone, Truck, ChevronDown } from "lucide-react";
+import { Menu, X, Phone, ChevronDown } from "lucide-react";
+import BrandMark from "@/components/ui/BrandMark";
 import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
 import { BUSINESS, NAV_LINKS, type NavLink } from "@/lib/constants";
@@ -77,19 +78,18 @@ export default function Navbar() {
           which is why the desktop row now starts at xl: and the 1024–1280px
           range gets the hamburger it used to skip. */}
       <div className="mx-auto w-full max-w-7xl px-5 sm:px-8">
-        <div className="flex h-[72px] items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 shrink-0">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-navy text-white">
-              <Truck size={20} strokeWidth={2.25} />
-            </span>
-            <span className="font-display leading-tight">
-              <span className="block text-[15px] font-bold text-navy sm:text-base">
-                Boise Basin
-              </span>
-              <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-basin-500">
-                Junk Removal
-              </span>
-            </span>
+        {/* 80px rather than the original 72px: the logo is the real stacked
+            lockup now — badge over "BOISE BASIN" over "JUNK REMOVAL" — and a
+            stacked mark needs more vertical room than the small chip beside
+            two lines of type that this row was originally sized for. */}
+        <div className="flex h-[80px] items-center justify-between">
+          <Link href="/" className="shrink-0" aria-label="Boise Basin Junk Removal — home">
+            {/* The logo file's own lockup, wordmark included, rather than the
+                badge next to type set in Space Grotesk. The words are part of
+                the logo artwork, so setting them separately meant the header
+                never quite matched the truck, the Facebook page, or the
+                business cards. */}
+            <BrandMark width={96} className="h-auto w-[84px] sm:w-[96px]" />
           </Link>
 
           {/* gap-5, not gap-6: the Pricing tab took the desktop row to eight
@@ -235,7 +235,7 @@ export default function Navbar() {
           // Expanded sections can run past the old fixed height, so the sheet
           // is capped at the viewport and scrolls instead of clipping items.
           open
-            ? "max-h-[calc(100vh-72px)] overflow-y-auto"
+            ? "max-h-[calc(100vh-80px)] overflow-y-auto"
             : "max-h-0 overflow-hidden"
         )}
       >

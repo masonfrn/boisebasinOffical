@@ -1,3 +1,5 @@
+import BrandMark from "@/components/ui/BrandMark";
+
 export const OG_SIZE = { width: 1200, height: 630 };
 
 export function ogElement() {
@@ -15,41 +17,13 @@ export function ogElement() {
           "radial-gradient(circle at 82% 18%, rgba(242,102,45,0.35), transparent 42%), radial-gradient(circle at 8% 88%, rgba(30,90,168,0.35), transparent 45%)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-        <div
-          style={{
-            display: "flex",
-            width: 76,
-            height: 76,
-            borderRadius: 20,
-            background: "#F2662D",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.25">
-            <path d="M10 17h4V5H2v12h3" />
-            <path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1" />
-            <circle cx="7.5" cy="17.5" r="2.5" />
-            <circle cx="17.5" cy="17.5" r="2.5" />
-          </svg>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ fontSize: 34, fontWeight: 700, color: "white", lineHeight: 1 }}>
-            Boise Basin
-          </div>
-          <div
-            style={{
-              fontSize: 17,
-              fontWeight: 600,
-              letterSpacing: 4,
-              color: "#F79A6C",
-              marginTop: 6,
-            }}
-          >
-            JUNK REMOVAL
-          </div>
-        </div>
+      {/* The real lockup, same as the header — this image is what Facebook
+          shows when someone shares a link, so the badge-plus-typed-text
+          version meant the share preview didn't quite match the ad running
+          beside it. White in place of the logo's navy, since this sits on the
+          navy card; the orange carries over as-is. */}
+      <div style={{ display: "flex" }}>
+        <BrandMark width={260} markColor="#FFFFFF" />
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", maxWidth: 920 }}>
