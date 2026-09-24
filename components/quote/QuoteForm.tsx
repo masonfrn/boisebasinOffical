@@ -48,7 +48,12 @@ type Estimate = {
   items: Array<{ name: string; quantity: number; cubicYards: number }>;
   accessNotes: string;
   cannotHaul: string[];
-  price: PriceRange;
+  /**
+   * Null on jobs too big to price from photos alone (see AUTO_QUOTE_MAX_YARDS).
+   * Those customers get the volume and a callback rather than a guessed number.
+   */
+  price: PriceRange | null;
+  quoteNeedsVisit?: boolean;
 };
 
 type FormState = {
@@ -369,7 +374,7 @@ export default function QuoteForm() {
     // (failed or slower than ESTIMATE_WAIT_MS): the customer still reaches the
     // quote screen and is still a real lead, so dropping it would undercount
     // conversions. It just goes without a value rather than a guessed one.
-    trackLead({ value: finalEstimate?.price.midpoint, contentName: "Quote Form" });
+    trackLead({ value: finalEstimate?.price?.midpoint, contentName: "Quote Form" });
 
     setPhase("quote");
   }
@@ -789,7 +794,7 @@ function EstimatePanel({
         </span>
       </div>
 
-      {PRICING_CONFIGURED ? (
+      {PRICING_CONFIGURED && estimate.price ? (
         <>
           <p className="mt-2 font-display text-3xl font-bold text-navy">
             {formatPriceRange(estimate.price)}
@@ -804,8 +809,14 @@ function EstimatePanel({
           <p className="mt-2 font-display text-2xl font-bold text-navy">
             About {estimate.cubicYards} cubic yards
           </p>
+          {/* A job this size is more than one truckload, and what's behind the
+              pile matters as much as what's in front of it. Quoting it from
+              photos would be a guess with a four-figure number attached, so the
+              volume goes on screen and the price comes from the call. */}
           <p className="mt-1 text-xs text-ink-muted">
-            We&apos;ll confirm your price when we call — usually within the hour.
+            {estimate.quoteNeedsVisit
+              ? "That's more than a full truckload, so we price it on a quick call rather than guessing from photos — usually within the hour."
+              : "We’ll confirm your price when we call — usually within the hour."}
           </p>
         </>
       )}

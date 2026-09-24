@@ -2,7 +2,12 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { TRUCK_CAPACITY_YARDS, loadSizeToCubicYards, priceForCubicYards } from "@/lib/pricing";
+import {
+  AUTO_QUOTE_MAX_YARDS,
+  TRUCK_CAPACITY_YARDS,
+  loadSizeToCubicYards,
+  priceForCubicYards,
+} from "@/lib/pricing";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,6 +32,11 @@ const EstimateSchema = z.object({
       })
     )
     .describe("Line-by-line breakdown of what drives the volume."),
+  heavyYards: z
+    .number()
+    .describe(
+      "Of the total above, how many cubic yards are DENSE material billed by weight: concrete, brick, dirt, sod, rock, roofing shingles, tile, plaster. Branches, brush, lumber, drywall, fencing, and furniture are NOT dense — they are bulky but light. Use 0 unless you can actually see dense material."
+    ),
   accessNotes: z
     .string()
     .describe(
@@ -44,6 +54,10 @@ const SYSTEM_PROMPT = `You estimate junk removal volume for Boise Basin Junk Rem
 You are given the customer's own description of the job and, usually, photos of the items. Estimate the total volume in cubic yards. A full truck load is ${TRUCK_CAPACITY_YARDS} cubic yards; a standard couch is roughly 3 cubic yards, a refrigerator roughly 2, a queen mattress set roughly 2.5.
 
 Estimate what you can actually see or what the customer explicitly listed. Do not inflate the volume to be safe and do not invent items to fill out the breakdown — a crew will confirm on site, and a quote that comes in far under the real job costs the business more than an honest one. When the photos are unclear or missing, say so with a low confidence rather than guessing precisely.
+
+The item types the customer ticked are broad categories, not measurements. "Construction Debris" and "Yard Waste" are what people tick for branches, brush, scrap lumber, drywall, and old fencing — all bulky but light. Size the load from the photos, not from the category names, and never assume dense material just because a category was selected.
+
+Dense material is billed separately by weight, so \`heavyYards\` matters: report only the cubic yards of concrete, brick, dirt, sod, rock, roofing shingles, tile, or plaster that you can actually see. It is 0 for the large majority of jobs, including most yard-waste and remodel-debris loads. Overstating it can more than double the customer's quote, so if you are unsure whether something is dense, use 0 and mention it in accessNotes instead.
 
 Flag anything we cannot legally haul: paint, solvents, chemicals, asbestos, or biohazard waste.`;
 
@@ -155,12 +169,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Could not estimate" }, { status: 502 });
     }
 
+    // Past the cap we deliberately return no price. The customer still sees the
+    // volume and gets a callback — better than a four-figure guess that loses
+    // the lead before anyone can talk to them.
+    const overCap = estimate.cubicYards > AUTO_QUOTE_MAX_YARDS;
+    const price = overCap
+      ? null
+      : priceForCubicYards(estimate.cubicYards, items, estimate.heavyYards);
+
+    // Logged so a quote that looks wrong can be checked afterwards instead of
+    // reconstructed from the arithmetic. Volume and the dense-yard reading are
+    // the two inputs that move the price most, so both are here by name.
+    console.log(
+      "Estimate produced",
+      JSON.stringify({
+        cubicYards: estimate.cubicYards,
+        heavyYards: estimate.heavyYards,
+        confidence: estimate.confidence,
+        items,
+        photoCount,
+        overCap,
+        price,
+      })
+    );
+
     return NextResponse.json({
       ok: true,
-      estimate: {
-        ...estimate,
-        price: priceForCubicYards(estimate.cubicYards, items),
-      },
+      estimate: { ...estimate, price, quoteNeedsVisit: overCap },
     });
   } catch (error) {
     if (error instanceof Anthropic.RateLimitError) {

@@ -246,14 +246,18 @@ export default function PricingPage() {
 
             <div className="flex items-start justify-between gap-4 rounded-2xl border border-navy/5 bg-paper p-5">
               <div>
-                <p className="font-display text-sm font-bold text-navy">
-                  Heavy material ({HEAVY_MATERIAL_TYPES.join(", ").toLowerCase()})
-                </p>
+                <p className="font-display text-sm font-bold text-navy">Heavy material</p>
+                {/* Spelled out from the constant so the page and the estimator
+                    can't drift on what counts as dense — and the last sentence
+                    is load-bearing: the charge applies to the dense yards only,
+                    not to a whole load that happens to contain some. */}
                 <p className="mt-1 text-sm leading-relaxed text-ink-muted">
-                  Concrete, dirt, sod, and rock are billed by weight because a
-                  single cubic yard runs close to two tons — the landfill&rsquo;s
-                  tipping fee outruns the volume charge well before the truck
-                  looks full.
+                  {HEAVY_MATERIAL_TYPES.join(", ").toLowerCase()} are billed by
+                  weight, because a single cubic yard runs close to two tons and
+                  the landfill&rsquo;s tipping fee outruns the volume charge well
+                  before the truck looks full. Branches, lumber, drywall, and
+                  furniture don&rsquo;t count — they&rsquo;re bulky, not heavy.
+                  This applies only to the dense portion of your load.
                 </p>
               </div>
               <span className="whitespace-nowrap font-display text-sm font-bold text-navy">

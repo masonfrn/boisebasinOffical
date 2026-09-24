@@ -53,11 +53,41 @@ export const SURCHARGES: Record<string, number> = {
 
 /**
  * Dense debris is billed by weight at the landfill ($33/ton), and a cubic yard
- * of concrete or dirt runs ~2 tons — the tipping fee alone outruns the volume
- * charge. Applied per cubic yard when these item types are selected.
+ * of concrete, dirt, or rock runs ~2 tons — the tipping fee alone outruns the
+ * volume charge.
+ *
+ * This used to be triggered by the customer ticking "Construction Debris" or
+ * "Yard Waste" on the form, which cost us a real job in September 2026: those
+ * are the boxes people tick for branches, fence panels, drywall, and scrap
+ * wood, all of which are *light and bulky* — the opposite of the concrete the
+ * rate is priced for. Because the charge applied per yard across the whole
+ * load, one wrong checkbox on a big job added $500–800 and quoted a ~$650 job
+ * at $1,155–$1,560.
+ *
+ * So the trigger is no longer a checkbox. `heavyYards` comes from the estimator
+ * actually seeing dense material in the photos and reporting how much of it
+ * there is, and the charge applies only to those yards rather than to the whole
+ * truck. A checkbox is a category; a photo is evidence. Only the second one
+ * should be able to double a price.
+ *
+ * HEAVY_MATERIAL_TYPES stays exported for the pricing page, which lists what
+ * counts as dense in customer-facing words. It is deliberately no longer
+ * matched against ITEM_TYPES — don't wire it back to the form's checkboxes.
  */
-export const HEAVY_MATERIAL_TYPES = ["Construction Debris", "Yard Waste"];
+export const HEAVY_MATERIAL_TYPES = ["Concrete", "Dirt", "Sod", "Rock", "Roofing", "Tile"];
 export const HEAVY_MATERIAL_PER_YARD = 35;
+
+/**
+ * Ceiling on what the form will quote without a human looking at the job.
+ *
+ * Past roughly a truck and a half the photos stop being reliable evidence —
+ * what's behind the visible pile matters more than what's in front of it, and
+ * multi-load jobs turn on access and dump trips rather than volume. A wrong
+ * four-figure number on screen loses the lead outright, whereas "we'll confirm
+ * on site" keeps the phone call. Above this the customer sees the volume and a
+ * callback promise instead of a price.
+ */
+export const AUTO_QUOTE_MAX_YARDS = 24;
 
 /**
  * The load sizes the public pricing page publishes, as fractions of a truck.
@@ -152,11 +182,20 @@ function roundToFive(value: number): number {
   return Math.round(value / 5) * 5;
 }
 
-export function priceForCubicYards(cubicYards: number, items: string[] = []): PriceRange {
+export function priceForCubicYards(
+  cubicYards: number,
+  items: string[] = [],
+  /**
+   * Cubic yards of genuinely dense material the estimator could see — concrete,
+   * dirt, rock, tile. Only these yards carry the weight surcharge, and it's
+   * clamped to the total so a bad reading can't bill more dense yards than
+   * there is load.
+   */
+  heavyYards = 0
+): PriceRange {
   const surcharge = items.reduce((sum, item) => sum + (SURCHARGES[item] ?? 0), 0);
-  const heavy = items.some((item) => HEAVY_MATERIAL_TYPES.includes(item))
-    ? cubicYards * HEAVY_MATERIAL_PER_YARD
-    : 0;
+  const dense = Math.min(Math.max(0, heavyYards), Math.max(0, cubicYards));
+  const heavy = dense * HEAVY_MATERIAL_PER_YARD;
 
   const midpoint = basePriceForVolume(cubicYards) + surcharge + heavy;
 
