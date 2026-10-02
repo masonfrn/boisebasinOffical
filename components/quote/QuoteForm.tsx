@@ -18,8 +18,13 @@ import {
 } from "lucide-react";
 import { trackLead } from "@/lib/analytics";
 import { ITEM_TYPES, SERVICE_AREAS } from "@/lib/constants";
-import { CLOUDINARY_CONFIGURED, toEstimateUrl, uploadPhoto } from "@/lib/cloudinary";
-import { previewUrlFor, shrinkForEstimate, type InlinePhoto } from "@/lib/photos";
+import {
+  CLOUDINARY_CONFIGURED,
+  toEstimateUrl,
+  toThumbUrl,
+  uploadPhoto,
+} from "@/lib/cloudinary";
+import { shrinkPhoto, toInlinePhoto, type InlinePhoto } from "@/lib/photos";
 import {
   PRICING_CONFIGURED,
   TRUCK_CAPACITY_YARDS,
@@ -30,7 +35,18 @@ import { cn } from "@/lib/utils";
 import TruckLoadGauge from "./TruckLoadGauge";
 
 type Photo = {
+  /**
+   * Our own handle on the photo. Filenames can't do this job — every photo
+   * taken straight from an iPhone camera arrives named "image.jpg".
+   */
+  id: string;
   name: string;
+  /**
+   * What the tile shows. A local object URL of the shrunk copy wherever the
+   * browser could make one, so the thumbnail appears without downloading back
+   * the photo that was just uploaded.
+   */
+  preview: string | null;
   /** Cloudinary URL once the upload lands. Null on the inline path. */
   url: string | null;
   /**
@@ -86,6 +102,9 @@ const STEP_TITLES = [
 /** Leaving this step is what kicks off the estimate. */
 const PHOTO_STEP = 2;
 
+/** Matches the cap in app/api/estimate/route.ts and the "(up to 6)" on the step. */
+const MAX_PHOTOS = 6;
+
 const DATE_OPTIONS = ["ASAP", "Today", "Tomorrow", "Specific Date"];
 
 /**
@@ -137,6 +156,8 @@ export default function QuoteForm() {
   // handler needs the *result*, and reading `estimate` from its closure gives
   // whatever was there when the handler was created.
   const estimatePromiseRef = useRef<Promise<Estimate | null> | null>(null);
+  // Counter behind each Photo's id.
+  const photoIdRef = useRef(0);
 
   const totalSteps = STEP_TITLES.length;
   const uploading = form.photos.some((photo) => photo.status === "uploading");
@@ -155,7 +176,14 @@ export default function QuoteForm() {
   }
 
   async function onPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []).slice(0, 6);
+    // Each pick adds to what's already there. People on phones often choose
+    // photos one or two at a time, and replacing the set on every pick threw
+    // away the ones they'd already waited on.
+    const room = MAX_PHOTOS - form.photos.length;
+    const files = Array.from(e.target.files ?? []).slice(0, room);
+    // Cleared so picking the same photo again (after removing it, say) still
+    // fires a change event.
+    e.target.value = "";
     if (files.length === 0) return;
 
     // New photos invalidate whatever was estimated from the old ones.
@@ -163,53 +191,83 @@ export default function QuoteForm() {
     setEstimate(null);
     estimatePromiseRef.current = null;
 
-    // Show the filenames right away, then settle each photo as it's ready.
+    const added = files.map((file) => ({
+      file,
+      id: `photo-${(photoIdRef.current += 1)}`,
+    }));
+
+    // Show a tile for each right away, then settle each photo as it's ready.
     setForm((prev) => ({
       ...prev,
-      photos: files.map((file) => ({
-        name: file.name,
-        url: null,
-        inline: null,
-        status: "uploading" as const,
-      })),
+      photos: [
+        ...prev.photos,
+        ...added.map(({ file, id }) => ({
+          id,
+          name: file.name,
+          preview: null,
+          url: null,
+          inline: null,
+          status: "uploading" as const,
+        })),
+      ],
     }));
 
     await Promise.all(
-      files.map(async (file, index) => {
+      added.map(async ({ file, id }) => {
+        // Matched by id, so a photo removed mid-upload is simply dropped and a
+        // late result can never land on a different photo's tile.
         const settle = (photo: Photo) =>
-          setForm((prev) => {
-            const photos = [...prev.photos];
-            if (photos[index]?.name === file.name) photos[index] = photo;
-            return { ...prev, photos };
-          });
+          setForm((prev) => ({
+            ...prev,
+            photos: prev.photos.map((existing) => (existing.id === id ? photo : existing)),
+          }));
+
+        // Shrink first, upload second. Sending the camera original was the
+        // slow part of this whole form — see the note at the top of
+        // lib/photos.ts. Null means the browser couldn't decode the file.
+        const small = await shrinkPhoto(file);
+        const preview = small ? URL.createObjectURL(small) : null;
 
         // Hosted when we can (leaves a link for the crew), shrunk-and-carried
         // otherwise. Either way Claude gets to see the photo.
         if (CLOUDINARY_CONFIGURED) {
           try {
-            const url = await uploadPhoto(file);
-            settle({ name: file.name, url, inline: null, status: "ready" });
+            // An undecodable photo (HEIC outside Safari, usually) goes up as
+            // the original — Cloudinary can read formats the browser can't.
+            const url = await uploadPhoto(small ?? file, file.name);
+            settle({
+              id,
+              name: file.name,
+              preview: preview ?? toThumbUrl(url),
+              url,
+              inline: null,
+              status: "ready",
+            });
             return;
           } catch {
             // Fall through — a shrunk copy still gets the customer an estimate.
           }
         }
 
-        const inline = await shrinkForEstimate(file);
+        const inline = small ? await toInlinePhoto(small) : null;
         settle({
+          id,
           name: file.name,
+          preview,
           url: null,
           inline,
-          // A photo the browser couldn't decode (HEIC, usually) is dropped
-          // rather than failing the whole quote.
+          // A photo that could be neither decoded nor hosted is dropped rather
+          // than failing the whole quote.
           status: inline ? "ready" : "failed",
         });
       })
     );
   }
 
-  function removePhoto(index: number) {
-    setForm((prev) => ({ ...prev, photos: prev.photos.filter((_, i) => i !== index) }));
+  function removePhoto(id: string) {
+    const removed = form.photos.find((photo) => photo.id === id);
+    if (removed?.preview?.startsWith("blob:")) URL.revokeObjectURL(removed.preview);
+    setForm((prev) => ({ ...prev, photos: prev.photos.filter((photo) => photo.id !== id) }));
   }
 
   const runEstimate = useCallback(() => {
@@ -380,6 +438,9 @@ export default function QuoteForm() {
   }
 
   function reset() {
+    for (const photo of form.photos) {
+      if (photo.preview?.startsWith("blob:")) URL.revokeObjectURL(photo.preview);
+    }
     setForm(initialState);
     setStep(0);
     setPhase("form");
@@ -579,17 +640,17 @@ export default function QuoteForm() {
 
                 {form.photos.length > 0 && (
                   <div className="mt-4 grid grid-cols-3 gap-2.5 sm:grid-cols-4">
-                    {form.photos.map((photo, i) => (
+                    {form.photos.map((photo) => (
                       <div
-                        key={`${photo.name}-${i}`}
+                        key={photo.id}
                         className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-navy-50 text-[11px] font-medium text-ink-muted"
                       >
                         {photo.status === "uploading" ? (
                           <Loader2 size={18} className="animate-spin text-haul-500" />
-                        ) : photo.url ?? photo.inline ? (
+                        ) : photo.status === "ready" && photo.preview ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={photo.url ?? previewUrlFor(photo.inline!)}
+                            src={photo.preview}
                             alt={photo.name}
                             className="h-full w-full object-cover"
                           />
@@ -598,7 +659,7 @@ export default function QuoteForm() {
                         )}
                         <button
                           type="button"
-                          onClick={() => removePhoto(i)}
+                          onClick={() => removePhoto(photo.id)}
                           aria-label={`Remove ${photo.name}`}
                           className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-navy text-white"
                         >
