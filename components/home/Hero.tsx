@@ -13,8 +13,10 @@ export default function Hero() {
       <Container className="relative grid items-center gap-12 py-14 lg:grid-cols-2 lg:py-20">
         <div>
           <span className="inline-flex items-center gap-2 rounded-full bg-navy-50 px-4 py-1.5 font-display text-xs font-bold uppercase tracking-[0.14em] text-navy">
-            <Star size={13} className="fill-basin-500 text-basin-500" />
-            Treasure Valley&apos;s Local Haulers
+            {/* A plain dot instead of the old star: the star read as a rating
+                badge, and the h1 right below already says "Treasure Valley". */}
+            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-basin-500" />
+            Local Haulers
           </span>
 
           <h1 className="mt-5 font-display text-4xl font-bold leading-[1.08] tracking-tight text-navy sm:text-5xl lg:text-[3.25rem]">
